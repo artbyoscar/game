@@ -48,6 +48,12 @@ export class Enemy implements IEnemy {
                 this.speed = 1.5;
                 this.damage = 25;
                 break;
+            case EnemyType.BOSS_OGRE:
+                this.health = 300;
+                this.maxHealth = 300;
+                this.speed = 1.0;
+                this.damage = 40;
+                break;
         }
 
         this.mesh = this.createMesh();
@@ -57,8 +63,12 @@ export class Enemy implements IEnemy {
     private createMesh(): THREE.Group {
         const group = new THREE.Group();
 
+        // Boss is bigger
+        const isBoss = this.type === EnemyType.BOSS_OGRE;
+        const scale = isBoss ? 2.0 : 1.0;
+
         // Body
-        const bodyGeometry = new THREE.BoxGeometry(0.6, 1.2, 0.4);
+        const bodyGeometry = new THREE.BoxGeometry(0.6 * scale, 1.2 * scale, 0.4 * scale);
         let bodyColor: number;
 
         switch (this.type) {
@@ -71,18 +81,23 @@ export class Enemy implements IEnemy {
             case EnemyType.ORC:
                 bodyColor = 0x8B4513; // Brown
                 break;
+            case EnemyType.BOSS_OGRE:
+                bodyColor = 0x4B0082; // Indigo (purple)
+                break;
+            default:
+                bodyColor = 0xFF0000;
         }
 
         const bodyMaterial = new THREE.MeshLambertMaterial({ color: bodyColor });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 0.6;
+        body.position.y = 0.6 * scale;
         body.castShadow = true;
         group.add(body);
 
         // Head
-        const headGeometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+        const headGeometry = new THREE.BoxGeometry(0.5 * scale, 0.5 * scale, 0.5 * scale);
         const head = new THREE.Mesh(headGeometry, bodyMaterial);
-        head.position.y = 1.45;
+        head.position.y = 1.45 * scale;
         head.castShadow = true;
         group.add(head);
 

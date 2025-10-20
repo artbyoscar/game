@@ -77,32 +77,61 @@ export class DungeonGenerator {
 
     private generateEnemySpawns(floor: number): Array<{ position: Position; type: EnemyType }> {
         const spawns: Array<{ position: Position; type: EnemyType }> = [];
-        const enemyTypes = [EnemyType.GOBLIN, EnemyType.SKELETON, EnemyType.ORC];
 
-        // Skip first room (player spawn)
-        for (let i = 1; i < this.rooms.length; i++) {
-            const room = this.rooms[i];
-            const numEnemies = 1 + Math.floor(Math.random() * (2 + Math.floor(floor / 3)));
+        // Boss floor every 5 floors
+        const isBossFloor = floor % 5 === 0;
 
-            for (let j = 0; j < numEnemies; j++) {
-                const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
-                const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+        if (isBossFloor) {
+            // Spawn boss in the last room
+            const lastRoom = this.rooms[this.rooms.length - 1];
+            const x = lastRoom.x + Math.floor(lastRoom.width / 2);
+            const z = lastRoom.z + Math.floor(lastRoom.depth / 2);
 
-                // Weighted selection based on floor
-                let type: EnemyType;
-                const rand = Math.random();
-                if (floor < 3) {
-                    type = rand < 0.7 ? EnemyType.GOBLIN : EnemyType.SKELETON;
-                } else if (floor < 6) {
-                    type = rand < 0.4 ? EnemyType.GOBLIN : (rand < 0.8 ? EnemyType.SKELETON : EnemyType.ORC);
-                } else {
-                    type = rand < 0.2 ? EnemyType.GOBLIN : (rand < 0.6 ? EnemyType.SKELETON : EnemyType.ORC);
+            spawns.push({
+                position: { x, y: 1, z },
+                type: EnemyType.BOSS_OGRE
+            });
+
+            // Still spawn some regular enemies in other rooms
+            for (let i = 1; i < this.rooms.length - 1; i++) {
+                if (Math.random() < 0.5) { // 50% chance
+                    const room = this.rooms[i];
+                    const rx = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+                    const rz = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+
+                    spawns.push({
+                        position: { x: rx, y: 1, z: rz },
+                        type: EnemyType.ORC
+                    });
                 }
+            }
+        } else {
+            // Regular enemy spawning
+            // Skip first room (player spawn)
+            for (let i = 1; i < this.rooms.length; i++) {
+                const room = this.rooms[i];
+                const numEnemies = 1 + Math.floor(Math.random() * (2 + Math.floor(floor / 3)));
 
-                spawns.push({
-                    position: { x, y: 1, z },
-                    type
-                });
+                for (let j = 0; j < numEnemies; j++) {
+                    const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+                    const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+
+                    // Weighted selection based on floor
+                    let type: EnemyType;
+                    const rand = Math.random();
+                    if (floor < 3) {
+                        type = rand < 0.7 ? EnemyType.GOBLIN : EnemyType.SKELETON;
+                    } else if (floor < 6) {
+                        type = rand < 0.4 ? EnemyType.GOBLIN : (rand < 0.8 ? EnemyType.SKELETON : EnemyType.ORC);
+                    } else {
+                        type = rand < 0.2 ? EnemyType.GOBLIN : (rand < 0.6 ? EnemyType.SKELETON : EnemyType.ORC);
+                    }
+
+                    spawns.push({
+                        position: { x, y: 1, z },
+                        type
+                    });
+                }
             }
         }
 
@@ -114,19 +143,27 @@ export class DungeonGenerator {
 
         // Add items to some rooms
         for (let i = 1; i < this.rooms.length; i++) {
-            if (Math.random() < 0.4) { // 40% chance for items
+            if (Math.random() < 0.5) { // 50% chance for items
                 const room = this.rooms[i];
                 const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
                 const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
 
                 const rand = Math.random();
                 let type: ItemType;
-                if (rand < 0.6) {
+
+                // Higher chance of better items on deeper floors
+                if (rand < 0.5) {
                     type = ItemType.HEALTH_POTION;
-                } else if (rand < 0.85) {
+                } else if (rand < 0.65) {
                     type = ItemType.WEAPON_SWORD;
-                } else {
+                } else if (rand < 0.8) {
                     type = ItemType.WEAPON_AXE;
+                } else if (rand < 0.9 && floor >= 3) {
+                    type = ItemType.WEAPON_BOW;
+                } else if (floor >= 5) {
+                    type = ItemType.WEAPON_STAFF;
+                } else {
+                    type = ItemType.WEAPON_SWORD;
                 }
 
                 spawns.push({

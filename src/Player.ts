@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { World } from './World';
+import { WeaponStats, WeaponType } from './types';
 
 export class Player {
     private camera: THREE.PerspectiveCamera;
@@ -30,11 +31,12 @@ export class Player {
     public maxHealth = 100;
     public damage = 20;
     private lastAttackTime = 0;
-    private readonly attackCooldown = 0.5; // seconds
-    private readonly attackRange = 3.0;
+    private attackCooldown = 0.5; // seconds
+    private attackRange = 3.0;
     private damageFlashTime = 0;
+    private currentWeaponType: WeaponType = WeaponType.MELEE;
 
-    private onAttackCallback?: () => void;
+    private onAttackCallback?: (weaponType: WeaponType) => void;
     private onDamageCallback?: () => void;
 
     constructor(camera: THREE.PerspectiveCamera, world: World) {
@@ -212,7 +214,7 @@ export class Player {
         this.lastAttackTime = currentTime;
 
         if (this.onAttackCallback) {
-            this.onAttackCallback();
+            this.onAttackCallback(this.currentWeaponType);
         }
     }
 
@@ -229,8 +231,15 @@ export class Player {
         this.health = Math.min(this.maxHealth, this.health + amount);
     }
 
-    setWeapon(damage: number): void {
-        this.damage = damage;
+    setWeapon(stats: WeaponStats): void {
+        this.damage = stats.damage;
+        this.attackRange = stats.range;
+        this.attackCooldown = stats.cooldown;
+        this.currentWeaponType = stats.type;
+    }
+
+    getWeaponType(): WeaponType {
+        return this.currentWeaponType;
     }
 
     getForwardDirection(): THREE.Vector3 {
@@ -254,7 +263,7 @@ export class Player {
         }
     }
 
-    onAttack(callback: () => void): void {
+    onAttack(callback: (weaponType: WeaponType) => void): void {
         this.onAttackCallback = callback;
     }
 

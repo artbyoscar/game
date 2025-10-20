@@ -4,7 +4,9 @@ import { Player } from './Player';
 import { DungeonGenerator } from './DungeonGenerator';
 import { Enemy } from './Enemy';
 import { Item } from './Item';
-import { BlockType } from './types';
+import { Projectile } from './Projectile';
+import { ParticleSystem, ParticleType } from './ParticleSystem';
+import { BlockType, WeaponType } from './types';
 
 class Game {
     private renderer: THREE.WebGLRenderer;
@@ -16,11 +18,14 @@ class Game {
 
     private enemies: Enemy[] = [];
     private items: Item[] = [];
+    private projectiles: Projectile[] = [];
+    private particleSystem: ParticleSystem;
 
     private clock = new THREE.Clock();
     private currentFloor = 1;
     private isRunning = false;
     private kills = 0;
+    private isBossFloor = false;
 
     // UI elements
     private hudElement: HTMLElement;
@@ -59,6 +64,7 @@ class Game {
         this.world = new World(this.scene);
         this.player = new Player(this.camera, this.world);
         this.dungeonGenerator = new DungeonGenerator(50, 10, 50);
+        this.particleSystem = new ParticleSystem(this.scene);
 
         // UI elements
         this.hudElement = document.getElementById('hud')!;
@@ -69,7 +75,7 @@ class Game {
         this.crosshairElement = document.getElementById('crosshair')!;
 
         // Player callbacks
-        this.player.onAttack(() => this.handlePlayerAttack());
+        this.player.onAttack((weaponType) => this.handlePlayerAttack(weaponType));
         this.player.onDamage(() => this.handlePlayerDamage());
 
         // Event listeners
@@ -149,11 +155,13 @@ class Game {
     }
 
     private generateDungeon(): void {
-        console.log(`Generating dungeon floor ${this.currentFloor}...`);
+        this.isBossFloor = this.currentFloor % 5 === 0;
+        console.log(`Generating dungeon floor ${this.currentFloor}...${this.isBossFloor ? ' BOSS FLOOR!' : ''}`);
 
         // Clear existing entities
         this.clearEnemies();
         this.clearItems();
+        this.clearProjectiles();
 
         const dungeon = this.dungeonGenerator.generate(this.currentFloor);
         this.world.loadDungeon(dungeon);
@@ -189,6 +197,11 @@ class Game {
 
         console.log(`Dungeon generated! Spawn: ${spawn.x}, ${spawn.y}, ${spawn.z}`);
         console.log(`Enemies: ${this.enemies.length}, Items: ${this.items.length}`);
+
+        if (this.isBossFloor) {
+            // Display boss warning (could add to HUD later)
+            console.log('>>> BOSS FIGHT! <<<');
+        }
     }
 
     private clearEnemies(): void {
@@ -205,36 +218,78 @@ class Game {
         this.items = [];
     }
 
-    private handlePlayerAttack(): void {
+    private clearProjectiles(): void {
+        this.projectiles.forEach(projectile => {
+            this.scene.remove(projectile.getMesh());
+            projectile.dispose();
+        });
+        this.projectiles = [];
+    }
+
+    private handlePlayerAttack(weaponType: WeaponType): void {
         const playerPos = this.player.getPosition();
         const attackDir = this.player.getForwardDirection();
         const attackRange = this.player.getAttackRange();
 
-        // Check if we hit any enemy
-        for (let i = this.enemies.length - 1; i >= 0; i--) {
-            const enemy = this.enemies[i];
-            const enemyPos = new THREE.Vector3(
-                enemy.position.x,
-                enemy.position.y + 1,
-                enemy.position.z
+        if (weaponType === WeaponType.MELEE) {
+            // Melee attack - immediate hit detection
+            this.particleSystem.emitParticles(
+                playerPos.clone().add(attackDir.clone().multiplyScalar(1.5)),
+                ParticleType.SPARK,
+                5
             );
 
-            const toEnemy = enemyPos.clone().sub(playerPos);
-            const distance = toEnemy.length();
+            for (let i = this.enemies.length - 1; i >= 0; i--) {
+                const enemy = this.enemies[i];
+                const enemyPos = new THREE.Vector3(
+                    enemy.position.x,
+                    enemy.position.y + 1,
+                    enemy.position.z
+                );
 
-            if (distance <= attackRange) {
-                // Check if enemy is in front of player
-                const angle = attackDir.angleTo(toEnemy.normalize());
-                if (angle < Math.PI / 4) { // 45 degree cone
-                    const isDead = enemy.takeDamage(this.player.damage);
-                    if (isDead) {
-                        this.scene.remove(enemy.getMesh());
-                        this.enemies.splice(i, 1);
-                        this.kills++;
-                        console.log(`Enemy killed! Total kills: ${this.kills}`);
+                const toEnemy = enemyPos.clone().sub(playerPos);
+                const distance = toEnemy.length();
+
+                if (distance <= attackRange) {
+                    const angle = attackDir.angleTo(toEnemy.normalize());
+                    if (angle < Math.PI / 4) {
+                        this.damageEnemy(enemy, i, toEnemy.normalize());
                     }
                 }
             }
+        } else {
+            // Ranged/Magic attack - create projectile
+            const projectileStart = playerPos.clone().add(attackDir.clone().multiplyScalar(0.5));
+            const projectile = new Projectile(
+                projectileStart,
+                attackDir,
+                this.player.damage,
+                weaponType
+            );
+
+            this.projectiles.push(projectile);
+            this.scene.add(projectile.getMesh());
+        }
+    }
+
+    private damageEnemy(enemy: Enemy, index: number, direction: THREE.Vector3): void {
+        this.particleSystem.emitBloodSplatter(
+            new THREE.Vector3(enemy.position.x, enemy.position.y + 1, enemy.position.z),
+            direction
+        );
+
+        const isDead = enemy.takeDamage(this.player.damage);
+
+        if (isDead) {
+            this.particleSystem.emitExplosion(
+                new THREE.Vector3(enemy.position.x, enemy.position.y + 1, enemy.position.z),
+                0x8B0000
+            );
+
+            this.scene.remove(enemy.getMesh());
+            this.enemies.splice(index, 1);
+            this.kills++;
+            console.log(`Enemy killed! Total kills: ${this.kills}`);
         }
     }
 
@@ -261,10 +316,12 @@ class Game {
 
                 if (effect.type === 'heal') {
                     this.player.heal(effect.value);
+                    this.particleSystem.emitHealEffect(playerPos);
                     console.log(`Picked up health potion! Healed ${effect.value} HP`);
-                } else if (effect.type === 'weapon') {
-                    this.player.setWeapon(effect.value);
-                    console.log(`Picked up weapon! Damage: ${effect.value}`);
+                } else if (effect.type === 'weapon' && effect.weaponStats) {
+                    this.player.setWeapon(effect.weaponStats);
+                    this.particleSystem.emitParticles(itemPos, ParticleType.PICKUP, 15);
+                    console.log(`Picked up weapon! Damage: ${effect.weaponStats.damage}, Type: ${effect.weaponStats.type}`);
                 }
 
                 this.scene.remove(item.getMesh());
@@ -313,6 +370,62 @@ class Game {
         });
     }
 
+    private updateProjectiles(deltaTime: number): void {
+        for (let i = this.projectiles.length - 1; i >= 0; i--) {
+            const projectile = this.projectiles[i];
+            const expired = projectile.update(deltaTime);
+
+            const projPos = projectile.getPosition();
+
+            // Check wall collision
+            if (this.world.isBlockSolid(projPos.x, projPos.y, projPos.z)) {
+                if (projectile.weaponType === WeaponType.MAGIC) {
+                    this.particleSystem.emitExplosion(projPos, 0xFF00FF);
+                }
+                this.scene.remove(projectile.getMesh());
+                projectile.dispose();
+                this.projectiles.splice(i, 1);
+                continue;
+            }
+
+            // Check enemy collision
+            let hitEnemy = false;
+            for (let j = this.enemies.length - 1; j >= 0; j--) {
+                const enemy = this.enemies[j];
+                const enemyPos = new THREE.Vector3(
+                    enemy.position.x,
+                    enemy.position.y + 1,
+                    enemy.position.z
+                );
+
+                const distance = projPos.distanceTo(enemyPos);
+
+                if (distance < 0.8) {
+                    // Hit!
+                    const direction = projPos.clone().sub(enemyPos).normalize();
+                    this.damageEnemy(enemy, j, direction);
+
+                    if (projectile.weaponType === WeaponType.MAGIC) {
+                        this.particleSystem.emitExplosion(projPos, 0xFF00FF);
+                    }
+
+                    hitEnemy = true;
+                    this.scene.remove(projectile.getMesh());
+                    projectile.dispose();
+                    this.projectiles.splice(i, 1);
+                    break;
+                }
+            }
+
+            // Remove expired projectiles
+            if (!hitEnemy && expired) {
+                this.scene.remove(projectile.getMesh());
+                projectile.dispose();
+                this.projectiles.splice(i, 1);
+            }
+        }
+    }
+
     private updateHUD(): void {
         this.floorLevelElement.textContent = this.currentFloor.toString();
         this.playerHpElement.textContent = `${Math.ceil(this.player.health)}/${this.player.maxHealth}`;
@@ -359,6 +472,8 @@ class Game {
             this.player.updateDamageFlash(deltaTime);
             this.updateEnemies(deltaTime);
             this.updateItems(deltaTime);
+            this.updateProjectiles(deltaTime);
+            this.particleSystem.update(deltaTime);
             this.checkStairs();
             this.updateHUD();
         }

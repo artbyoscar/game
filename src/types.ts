@@ -38,7 +38,9 @@ export interface Dungeon {
 export enum ItemType {
     HEALTH_POTION = 'health_potion',
     WEAPON_SWORD = 'weapon_sword',
-    WEAPON_AXE = 'weapon_axe'
+    WEAPON_AXE = 'weapon_axe',
+    WEAPON_BOW = 'weapon_bow',
+    WEAPON_STAFF = 'weapon_staff'
 }
 
 export interface Item {
@@ -51,7 +53,21 @@ export interface Item {
 export enum EnemyType {
     GOBLIN = 'goblin',
     SKELETON = 'skeleton',
-    ORC = 'orc'
+    ORC = 'orc',
+    BOSS_OGRE = 'boss_ogre'
+}
+
+export enum WeaponType {
+    MELEE = 'melee',
+    RANGED = 'ranged',
+    MAGIC = 'magic'
+}
+
+export interface WeaponStats {
+    damage: number;
+    range: number;
+    cooldown: number;
+    type: WeaponType;
 }
 
 export interface Enemy {

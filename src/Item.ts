@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { Item as IItem, ItemType, Position } from './types';
+import { Item as IItem, ItemType, Position, WeaponStats, WeaponType } from './types';
 
 export class Item implements IItem {
     id: string;
@@ -35,6 +35,14 @@ export class Item implements IItem {
                 geometry = new THREE.BoxGeometry(0.3, 0.6, 0.1);
                 color = 0x8B4513;
                 break;
+            case ItemType.WEAPON_BOW:
+                geometry = new THREE.BoxGeometry(0.1, 0.7, 0.3);
+                color = 0x8B4513;
+                break;
+            case ItemType.WEAPON_STAFF:
+                geometry = new THREE.CylinderGeometry(0.05, 0.05, 1.0, 8);
+                color = 0x9370DB;
+                break;
             default:
                 geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
                 color = 0xFFFF00;
@@ -67,14 +75,34 @@ export class Item implements IItem {
         return this.mesh;
     }
 
-    getEffect(): { type: string; value: number } {
+    getEffect(): { type: string; value: number; weaponStats?: WeaponStats } {
         switch (this.type) {
             case ItemType.HEALTH_POTION:
                 return { type: 'heal', value: 30 };
             case ItemType.WEAPON_SWORD:
-                return { type: 'weapon', value: 25 };
+                return {
+                    type: 'weapon',
+                    value: 25,
+                    weaponStats: { damage: 25, range: 3.0, cooldown: 0.5, type: WeaponType.MELEE }
+                };
             case ItemType.WEAPON_AXE:
-                return { type: 'weapon', value: 35 };
+                return {
+                    type: 'weapon',
+                    value: 35,
+                    weaponStats: { damage: 35, range: 3.0, cooldown: 0.7, type: WeaponType.MELEE }
+                };
+            case ItemType.WEAPON_BOW:
+                return {
+                    type: 'weapon',
+                    value: 20,
+                    weaponStats: { damage: 20, range: 15.0, cooldown: 0.8, type: WeaponType.RANGED }
+                };
+            case ItemType.WEAPON_STAFF:
+                return {
+                    type: 'weapon',
+                    value: 30,
+                    weaponStats: { damage: 30, range: 10.0, cooldown: 1.0, type: WeaponType.MAGIC }
+                };
             default:
                 return { type: 'none', value: 0 };
         }
