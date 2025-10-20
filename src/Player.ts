@@ -36,8 +36,29 @@ export class Player {
     private damageFlashTime = 0;
     private currentWeaponType: WeaponType = WeaponType.MELEE;
 
+    // Stamina and dash
+    public stamina = 100;
+    public maxStamina = 100;
+    private readonly staminaRegenRate = 25; // per second
+    private readonly dashCost = 30;
+    private readonly dashSpeed = 15.0;
+    private readonly dashDuration = 0.3;
+    private dashTime = 0;
+    private isDashing = false;
+    private dashDirection = new THREE.Vector3();
+
+    // Level and progression
+    public level = 1;
+    public experience = 0;
+    public experienceToNextLevel = 100;
+    private comboCount = 0;
+    private comboTimer = 0;
+    private readonly comboWindow = 2.0; // seconds
+
     private onAttackCallback?: (weaponType: WeaponType) => void;
     private onDamageCallback?: () => void;
+    private onComboCallback?: (combo: number) => void;
+    private onLevelUpCallback?: () => void;
 
     constructor(camera: THREE.PerspectiveCamera, world: World) {
         this.camera = camera;
@@ -58,6 +79,10 @@ export class Player {
                     if (this.moveState.canJump) {
                         this.moveState.jump = true;
                     }
+                    break;
+                case 'ShiftLeft':
+                case 'ShiftRight':
+                    this.attemptDash();
                     break;
             }
         });
@@ -94,6 +119,27 @@ export class Player {
     }
 
     update(deltaTime: number): void {
+        // Update dash
+        if (this.isDashing) {
+            this.dashTime -= deltaTime;
+            if (this.dashTime <= 0) {
+                this.isDashing = false;
+            }
+        }
+
+        // Regenerate stamina
+        if (!this.isDashing && this.stamina < this.maxStamina) {
+            this.stamina = Math.min(this.maxStamina, this.stamina + this.staminaRegenRate * deltaTime);
+        }
+
+        // Update combo timer
+        if (this.comboTimer > 0) {
+            this.comboTimer -= deltaTime;
+            if (this.comboTimer <= 0) {
+                this.comboCount = 0;
+            }
+        }
+
         // Apply gravity
         this.velocity.y -= this.gravity * deltaTime;
 
@@ -113,13 +159,19 @@ export class Player {
         const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
         const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
 
-        const moveVelocity = new THREE.Vector3();
-        moveVelocity.addScaledVector(forward, this.direction.z);
-        moveVelocity.addScaledVector(right, this.direction.x);
-        moveVelocity.normalize().multiplyScalar(this.speed);
+        // Handle dashing
+        if (this.isDashing) {
+            this.velocity.x = this.dashDirection.x;
+            this.velocity.z = this.dashDirection.z;
+        } else {
+            const moveVelocity = new THREE.Vector3();
+            moveVelocity.addScaledVector(forward, this.direction.z);
+            moveVelocity.addScaledVector(right, this.direction.x);
+            moveVelocity.normalize().multiplyScalar(this.speed);
 
-        this.velocity.x = moveVelocity.x;
-        this.velocity.z = moveVelocity.z;
+            this.velocity.x = moveVelocity.x;
+            this.velocity.z = moveVelocity.z;
+        }
 
         // Handle jumping
         if (this.moveState.jump && this.moveState.canJump) {
@@ -271,7 +323,87 @@ export class Player {
         this.onDamageCallback = callback;
     }
 
+    onCombo(callback: (combo: number) => void): void {
+        this.onComboCallback = callback;
+    }
+
+    onLevelUp(callback: () => void): void {
+        this.onLevelUpCallback = callback;
+    }
+
     isDead(): boolean {
         return this.health <= 0;
+    }
+
+    private attemptDash(): void {
+        if (this.isDashing || this.stamina < this.dashCost) {
+            return;
+        }
+
+        // Calculate dash direction
+        const forward = new THREE.Vector3(0, 0, -1).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+        const right = new THREE.Vector3(1, 0, 0).applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw);
+
+        this.dashDirection.set(0, 0, 0);
+
+        if (this.moveState.forward) this.dashDirection.addScaledVector(forward, -1);
+        if (this.moveState.backward) this.dashDirection.addScaledVector(forward, 1);
+        if (this.moveState.left) this.dashDirection.addScaledVector(right, -1);
+        if (this.moveState.right) this.dashDirection.addScaledVector(right, 1);
+
+        // If no direction, dash forward
+        if (this.dashDirection.length() === 0) {
+            this.dashDirection.copy(forward).multiplyScalar(-1);
+        }
+
+        this.dashDirection.normalize().multiplyScalar(this.dashSpeed);
+
+        this.isDashing = true;
+        this.dashTime = this.dashDuration;
+        this.stamina -= this.dashCost;
+    }
+
+    registerHit(): void {
+        this.comboCount++;
+        this.comboTimer = this.comboWindow;
+
+        if (this.onComboCallback) {
+            this.onComboCallback(this.comboCount);
+        }
+    }
+
+    getComboCount(): number {
+        return this.comboCount;
+    }
+
+    addExperience(amount: number): void {
+        this.experience += amount;
+
+        while (this.experience >= this.experienceToNextLevel) {
+            this.levelUp();
+        }
+    }
+
+    private levelUp(): void {
+        this.level++;
+        this.experience -= this.experienceToNextLevel;
+        this.experienceToNextLevel = Math.floor(this.experienceToNextLevel * 1.5);
+
+        // Stat increases on level up
+        this.maxHealth += 10;
+        this.health = this.maxHealth; // Full heal on level up
+        this.maxStamina += 10;
+        this.stamina = this.maxStamina;
+        this.damage += 2;
+
+        if (this.onLevelUpCallback) {
+            this.onLevelUpCallback();
+        }
+
+        console.log(`LEVEL UP! Now level ${this.level}`);
+    }
+
+    getIsDashing(): boolean {
+        return this.isDashing;
     }
 }

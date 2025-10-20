@@ -102,25 +102,34 @@
         <p style="margin-top: 20px; font-size: 14px;">
             <strong>Controls:</strong><br>
             WASD - Move | Mouse - Look | SPACE - Jump<br>
-            Click - Attack | E - Pick Up Items<br>
-            Stand on stairs to descend
+            Click - Attack | E - Pick Up Items | Shift - Dash<br>
+            Stand on stairs to descend | Kill enemies to level up!
         </p>
         <p style="margin-top: 20px; font-size: 16px; cursor: pointer;">Click to Start</p>
     </div>
 
     <div id="hud" class="hidden">
-        <div style="font-size: 20px; margin-bottom: 10px;">
-            <strong>Floor:</strong> <span id="floor-level">1</span>
+        <div style="font-size: 22px; margin-bottom: 10px; color: #FFD700;">
+            <strong>Level:</strong> <span id="player-level">1</span> | <strong>Floor:</strong> <span id="floor-level">1</span>
         </div>
-        <div style="font-size: 18px; color: #ff6b6b;">
+        <div style="font-size: 18px; color: #ff6b6b; margin-bottom: 5px;">
             <strong>HP:</strong> <span id="player-hp">100/100</span>
         </div>
-        <div style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
-            <div>Position: <span id="player-pos">0, 0, 0</span></div>
-            <div style="margin-top: 10px;">
-                Click - Attack<br>
-                E - Pick Up
-            </div>
+        <div style="font-size: 16px; color: #00BFFF; margin-bottom: 10px;">
+            <strong>Stamina:</strong> <span id="player-stamina">100/100</span>
+        </div>
+        <div style="font-size: 16px; color: #90EE90; margin-bottom: 10px;">
+            <strong>XP:</strong> <span id="player-xp">0/100</span>
+        </div>
+        <div id="combo-display" style="font-size: 24px; color: #FFD700; font-weight: bold; margin-bottom: 10px; display: none;">
+            COMBO x<span id="combo-count">0</span>!
+        </div>
+        <div style="margin-top: 15px; font-size: 14px;">
+            <div><strong>Weapon:</strong> <span id="weapon-info">Fists (20 dmg)</span></div>
+            <div><strong>Kills:</strong> <span id="kill-count">0</span></div>
+        </div>
+        <div style="margin-top: 20px; font-size: 11px; opacity: 0.6;">
+            Click - Attack | E - Pick Up | Shift - Dash
         </div>
     </div>
 

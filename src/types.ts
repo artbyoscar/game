@@ -40,7 +40,9 @@ export enum ItemType {
     WEAPON_SWORD = 'weapon_sword',
     WEAPON_AXE = 'weapon_axe',
     WEAPON_BOW = 'weapon_bow',
-    WEAPON_STAFF = 'weapon_staff'
+    WEAPON_STAFF = 'weapon_staff',
+    WEAPON_LEGENDARY_BLADE = 'weapon_legendary_blade',
+    WEAPON_LEGENDARY_BOW = 'weapon_legendary_bow'
 }
 
 export interface Item {
@@ -53,7 +55,9 @@ export interface Item {
 export enum EnemyType {
     GOBLIN = 'goblin',
     SKELETON = 'skeleton',
+    SKELETON_ARCHER = 'skeleton_archer',
     ORC = 'orc',
+    BAT = 'bat',
     BOSS_OGRE = 'boss_ogre'
 }
 

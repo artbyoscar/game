@@ -42,6 +42,18 @@ export class Enemy implements IEnemy {
                 this.speed = 2.0;
                 this.damage = 15;
                 break;
+            case EnemyType.SKELETON_ARCHER:
+                this.health = 40;
+                this.maxHealth = 40;
+                this.speed = 1.0;
+                this.damage = 12;
+                break;
+            case EnemyType.BAT:
+                this.health = 20;
+                this.maxHealth = 20;
+                this.speed = 3.5;
+                this.damage = 8;
+                break;
             case EnemyType.ORC:
                 this.health = 80;
                 this.maxHealth = 80;
@@ -63,6 +75,43 @@ export class Enemy implements IEnemy {
     private createMesh(): THREE.Group {
         const group = new THREE.Group();
 
+        // Special handling for bat
+        if (this.type === EnemyType.BAT) {
+            const batGeometry = new THREE.SphereGeometry(0.3, 8, 8);
+            const batMaterial = new THREE.MeshLambertMaterial({ color: 0x2F2F2F });
+            const body = new THREE.Mesh(batGeometry, batMaterial);
+            body.castShadow = true;
+            group.add(body);
+
+            // Wings
+            const wingGeometry = new THREE.BoxGeometry(0.6, 0.1, 0.3);
+            const leftWing = new THREE.Mesh(wingGeometry, batMaterial);
+            leftWing.position.set(-0.4, 0, 0);
+            group.add(leftWing);
+
+            const rightWing = new THREE.Mesh(wingGeometry, batMaterial);
+            rightWing.position.set(0.4, 0, 0);
+            group.add(rightWing);
+
+            // Health bar
+            const healthBarBg = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.8, 0.1),
+                new THREE.MeshBasicMaterial({ color: 0x330000 })
+            );
+            healthBarBg.position.set(0, 0.6, 0);
+            group.add(healthBarBg);
+
+            const healthBarFg = new THREE.Mesh(
+                new THREE.PlaneGeometry(0.8, 0.1),
+                new THREE.MeshBasicMaterial({ color: 0xFF0000 })
+            );
+            healthBarFg.position.set(0, 0.6, 0.01);
+            healthBarFg.name = 'healthBar';
+            group.add(healthBarFg);
+
+            return group;
+        }
+
         // Boss is bigger
         const isBoss = this.type === EnemyType.BOSS_OGRE;
         const scale = isBoss ? 2.0 : 1.0;
@@ -76,6 +125,7 @@ export class Enemy implements IEnemy {
                 bodyColor = 0x228B22; // Green
                 break;
             case EnemyType.SKELETON:
+            case EnemyType.SKELETON_ARCHER:
                 bodyColor = 0xEEEEEE; // White
                 break;
             case EnemyType.ORC:
@@ -100,6 +150,15 @@ export class Enemy implements IEnemy {
         head.position.y = 1.45 * scale;
         head.castShadow = true;
         group.add(head);
+
+        // Bow for skeleton archer
+        if (this.type === EnemyType.SKELETON_ARCHER) {
+            const bowGeometry = new THREE.BoxGeometry(0.1, 0.5, 0.3);
+            const bowMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const bow = new THREE.Mesh(bowGeometry, bowMaterial);
+            bow.position.set(0.4, 0.8, 0);
+            group.add(bow);
+        }
 
         // Eyes
         const eyeGeometry = new THREE.BoxGeometry(0.1, 0.1, 0.1);

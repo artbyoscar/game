@@ -43,15 +43,26 @@ export class Item implements IItem {
                 geometry = new THREE.CylinderGeometry(0.05, 0.05, 1.0, 8);
                 color = 0x9370DB;
                 break;
+            case ItemType.WEAPON_LEGENDARY_BLADE:
+                geometry = new THREE.BoxGeometry(0.15, 1.0, 0.15);
+                color = 0xFFD700; // Gold
+                break;
+            case ItemType.WEAPON_LEGENDARY_BOW:
+                geometry = new THREE.BoxGeometry(0.15, 0.9, 0.4);
+                color = 0xFFD700; // Gold
+                break;
             default:
                 geometry = new THREE.BoxGeometry(0.3, 0.3, 0.3);
                 color = 0xFFFF00;
         }
 
+        const isLegendary = this.type === ItemType.WEAPON_LEGENDARY_BLADE ||
+                           this.type === ItemType.WEAPON_LEGENDARY_BOW;
+
         const material = new THREE.MeshLambertMaterial({
             color,
             emissive: color,
-            emissiveIntensity: 0.3
+            emissiveIntensity: isLegendary ? 0.7 : 0.3
         });
 
         const mesh = new THREE.Mesh(geometry, material);
@@ -102,6 +113,18 @@ export class Item implements IItem {
                     type: 'weapon',
                     value: 30,
                     weaponStats: { damage: 30, range: 10.0, cooldown: 1.0, type: WeaponType.MAGIC }
+                };
+            case ItemType.WEAPON_LEGENDARY_BLADE:
+                return {
+                    type: 'weapon',
+                    value: 60,
+                    weaponStats: { damage: 60, range: 3.5, cooldown: 0.3, type: WeaponType.MELEE }
+                };
+            case ItemType.WEAPON_LEGENDARY_BOW:
+                return {
+                    type: 'weapon',
+                    value: 50,
+                    weaponStats: { damage: 50, range: 20.0, cooldown: 0.5, type: WeaponType.RANGED }
                 };
             default:
                 return { type: 'none', value: 0 };

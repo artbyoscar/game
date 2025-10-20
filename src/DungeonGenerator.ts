@@ -119,16 +119,33 @@ export class DungeonGenerator {
                     // Weighted selection based on floor
                     let type: EnemyType;
                     const rand = Math.random();
+
                     if (floor < 3) {
-                        type = rand < 0.7 ? EnemyType.GOBLIN : EnemyType.SKELETON;
+                        // Early floors: mostly goblins, some bats
+                        if (rand < 0.6) type = EnemyType.GOBLIN;
+                        else if (rand < 0.9) type = EnemyType.SKELETON;
+                        else type = EnemyType.BAT;
                     } else if (floor < 6) {
-                        type = rand < 0.4 ? EnemyType.GOBLIN : (rand < 0.8 ? EnemyType.SKELETON : EnemyType.ORC);
+                        // Mid floors: variety
+                        if (rand < 0.3) type = EnemyType.GOBLIN;
+                        else if (rand < 0.5) type = EnemyType.SKELETON;
+                        else if (rand < 0.65) type = EnemyType.SKELETON_ARCHER;
+                        else if (rand < 0.85) type = EnemyType.ORC;
+                        else type = EnemyType.BAT;
                     } else {
-                        type = rand < 0.2 ? EnemyType.GOBLIN : (rand < 0.6 ? EnemyType.SKELETON : EnemyType.ORC);
+                        // Late floors: harder enemies
+                        if (rand < 0.15) type = EnemyType.GOBLIN;
+                        else if (rand < 0.3) type = EnemyType.SKELETON;
+                        else if (rand < 0.5) type = EnemyType.SKELETON_ARCHER;
+                        else if (rand < 0.8) type = EnemyType.ORC;
+                        else type = EnemyType.BAT;
                     }
 
+                    // Bats spawn higher
+                    const y = type === EnemyType.BAT ? 2.5 : 1;
+
                     spawns.push({
-                        position: { x, y: 1, z },
+                        position: { x, y, z },
                         type
                     });
                 }
@@ -151,14 +168,16 @@ export class DungeonGenerator {
                 const rand = Math.random();
                 let type: ItemType;
 
-                // Higher chance of better items on deeper floors
-                if (rand < 0.5) {
+                // Legendary items on floor 10+
+                if (floor >= 10 && rand < 0.05) { // 5% chance for legendary
+                    type = Math.random() < 0.5 ? ItemType.WEAPON_LEGENDARY_BLADE : ItemType.WEAPON_LEGENDARY_BOW;
+                } else if (rand < 0.45) {
                     type = ItemType.HEALTH_POTION;
-                } else if (rand < 0.65) {
+                } else if (rand < 0.6) {
                     type = ItemType.WEAPON_SWORD;
-                } else if (rand < 0.8) {
+                } else if (rand < 0.75) {
                     type = ItemType.WEAPON_AXE;
-                } else if (rand < 0.9 && floor >= 3) {
+                } else if (rand < 0.88 && floor >= 3) {
                     type = ItemType.WEAPON_BOW;
                 } else if (floor >= 5) {
                     type = ItemType.WEAPON_STAFF;

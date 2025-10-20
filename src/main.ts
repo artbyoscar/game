@@ -32,6 +32,13 @@ class Game {
     private menuElement: HTMLElement;
     private floorLevelElement: HTMLElement;
     private playerHpElement: HTMLElement;
+    private playerStaminaElement: HTMLElement;
+    private playerXpElement: HTMLElement;
+    private playerLevelElement: HTMLElement;
+    private weaponInfoElement: HTMLElement;
+    private killCountElement: HTMLElement;
+    private comboDisplayElement: HTMLElement;
+    private comboCountElement: HTMLElement;
     private playerPosElement: HTMLElement;
     private crosshairElement: HTMLElement;
     private gameCanvas: HTMLCanvasElement;
@@ -71,12 +78,21 @@ class Game {
         this.menuElement = document.getElementById('menu')!;
         this.floorLevelElement = document.getElementById('floor-level')!;
         this.playerHpElement = document.getElementById('player-hp')!;
+        this.playerStaminaElement = document.getElementById('player-stamina')!;
+        this.playerXpElement = document.getElementById('player-xp')!;
+        this.playerLevelElement = document.getElementById('player-level')!;
+        this.weaponInfoElement = document.getElementById('weapon-info')!;
+        this.killCountElement = document.getElementById('kill-count')!;
+        this.comboDisplayElement = document.getElementById('combo-display')!;
+        this.comboCountElement = document.getElementById('combo-count')!;
         this.playerPosElement = document.getElementById('player-pos')!;
         this.crosshairElement = document.getElementById('crosshair')!;
 
         // Player callbacks
         this.player.onAttack((weaponType) => this.handlePlayerAttack(weaponType));
         this.player.onDamage(() => this.handlePlayerDamage());
+        this.player.onCombo((combo) => this.handleCombo(combo));
+        this.player.onLevelUp(() => this.handleLevelUp());
 
         // Event listeners
         this.setupEventListeners();
@@ -278,6 +294,8 @@ class Game {
             direction
         );
 
+        this.player.registerHit(); // Register combo hit
+
         const isDead = enemy.takeDamage(this.player.damage);
 
         if (isDead) {
@@ -286,11 +304,32 @@ class Game {
                 0x8B0000
             );
 
+            // Give XP based on enemy type
+            const xpReward = enemy.maxHealth; // XP = max HP
+            this.player.addExperience(xpReward);
+
             this.scene.remove(enemy.getMesh());
             this.enemies.splice(index, 1);
             this.kills++;
-            console.log(`Enemy killed! Total kills: ${this.kills}`);
+            console.log(`Enemy killed! Total kills: ${this.kills} | +${xpReward} XP`);
         }
+    }
+
+    private handleCombo(combo: number): void {
+        this.comboCountElement.textContent = combo.toString();
+        if (combo > 1) {
+            this.comboDisplayElement.style.display = 'block';
+        } else {
+            this.comboDisplayElement.style.display = 'none';
+        }
+    }
+
+    private handleLevelUp(): void {
+        this.particleSystem.emitExplosion(
+            this.player.getPosition(),
+            0xFFD700
+        );
+        console.log('✨ LEVEL UP! ✨');
     }
 
     private handlePlayerDamage(): void {
@@ -427,14 +466,26 @@ class Game {
     }
 
     private updateHUD(): void {
+        // Basic stats
         this.floorLevelElement.textContent = this.currentFloor.toString();
+        this.playerLevelElement.textContent = this.player.level.toString();
         this.playerHpElement.textContent = `${Math.ceil(this.player.health)}/${this.player.maxHealth}`;
+        this.playerStaminaElement.textContent = `${Math.ceil(this.player.stamina)}/${this.player.maxStamina}`;
+        this.playerXpElement.textContent = `${this.player.experience}/${this.player.experienceToNextLevel}`;
+        this.killCountElement.textContent = this.kills.toString();
+
+        // Weapon info
+        const weaponType = this.player.getWeaponType();
+        const weaponName = weaponType === WeaponType.MELEE ? 'Melee' :
+                          weaponType === WeaponType.RANGED ? 'Bow' : 'Magic';
+        this.weaponInfoElement.textContent = `${weaponName} (${this.player.damage} dmg)`;
 
         // Damage flash effect
         const damageFlash = this.player.getDamageFlash();
         if (damageFlash > 0) {
-            const intensity = Math.floor((damageFlash / 0.3) * 255);
             this.gameCanvas.style.border = `4px solid rgba(255, 0, 0, ${damageFlash})`;
+        } else if (this.player.getIsDashing()) {
+            this.gameCanvas.style.border = `4px solid rgba(0, 191, 255, 0.5)`;
         } else {
             this.gameCanvas.style.border = 'none';
         }
