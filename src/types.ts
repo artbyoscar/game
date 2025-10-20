@@ -9,7 +9,9 @@ export enum BlockType {
     DOOR = 5,
     STAIRS_DOWN = 6,
     STAIRS_UP = 7,
-    SPIKE_TRAP = 8
+    SPIKE_TRAP = 8,
+    TREASURE_FLOOR = 9,
+    CHALLENGE_FLOOR = 10
 }
 
 export interface Position {
@@ -23,6 +25,7 @@ export interface Room {
     z: number;
     width: number;
     depth: number;
+    type?: RoomType;
 }
 
 export interface Dungeon {

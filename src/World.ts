@@ -15,7 +15,9 @@ export class World {
         [BlockType.DOOR, 0x8B4513],
         [BlockType.STAIRS_DOWN, 0x00AA00],
         [BlockType.STAIRS_UP, 0x0000AA],
-        [BlockType.SPIKE_TRAP, 0x8B0000]
+        [BlockType.SPIKE_TRAP, 0x8B0000],
+        [BlockType.TREASURE_FLOOR, 0xFFD700],
+        [BlockType.CHALLENGE_FLOOR, 0xFF4500]
     ]);
 
     constructor(scene: THREE.Scene) {

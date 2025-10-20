@@ -6,7 +6,7 @@ import { Enemy } from './Enemy';
 import { Item } from './Item';
 import { Projectile } from './Projectile';
 import { ParticleSystem, ParticleType } from './ParticleSystem';
-import { BlockType, WeaponType, ItemType, Position } from './types';
+import { BlockType, WeaponType, ItemType, Position, RoomType } from './types';
 
 class Game {
     private renderer: THREE.WebGLRenderer;
@@ -448,6 +448,7 @@ class Game {
     }
 
     private spikeTrapCooldown = 0;
+    private lastRoomType: RoomType | null = null;
 
     private checkHazards(deltaTime: number): void {
         // Update spike trap cooldown
@@ -461,6 +462,9 @@ class Game {
             Math.floor(playerPos.y - 1.5),
             Math.floor(playerPos.z)
         );
+
+        // Check for room type changes
+        this.checkRoomType(block);
 
         // Spike trap damage
         if (block === BlockType.SPIKE_TRAP && this.spikeTrapCooldown <= 0) {
@@ -480,6 +484,33 @@ class Game {
                 this.gameOver();
             }
         }
+    }
+
+    private checkRoomType(floorBlock: BlockType): void {
+        let currentRoomType: RoomType | null = null;
+
+        if (floorBlock === BlockType.TREASURE_FLOOR) {
+            currentRoomType = RoomType.TREASURE;
+        } else if (floorBlock === BlockType.CHALLENGE_FLOOR) {
+            currentRoomType = RoomType.CHALLENGE;
+        } else {
+            currentRoomType = RoomType.NORMAL;
+        }
+
+        // Notify when entering a special room
+        if (currentRoomType !== this.lastRoomType && currentRoomType !== RoomType.NORMAL) {
+            if (currentRoomType === RoomType.TREASURE) {
+                console.log('✨ You entered a TREASURE ROOM! Golden floor - expect rare loot! ✨');
+                // Golden sparkle effect
+                this.particleSystem.emitSpark(this.player.getPosition());
+            } else if (currentRoomType === RoomType.CHALLENGE) {
+                console.log('⚔️  You entered a CHALLENGE ROOM! Orange floor - face many foes for rewards! ⚔️');
+                // Fire effect
+                this.particleSystem.emitExplosion(this.player.getPosition(), 0xFF4500);
+            }
+        }
+
+        this.lastRoomType = currentRoomType;
     }
 
     private updateEnemies(deltaTime: number): void {

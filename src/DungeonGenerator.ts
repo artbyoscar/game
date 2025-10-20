@@ -1,4 +1,4 @@
-import { BlockType, Dungeon, Room, Position, EnemyType, ItemType } from './types';
+import { BlockType, Dungeon, Room, Position, EnemyType, ItemType, RoomType } from './types';
 
 export class DungeonGenerator {
     private width: number;
@@ -39,8 +39,6 @@ export class DungeonGenerator {
             }
 
             if (!overlaps) {
-                this.carveRoom(newRoom);
-
                 // Connect to previous room with corridor
                 if (this.rooms.length > 0) {
                     const prevRoom = this.rooms[this.rooms.length - 1];
@@ -49,6 +47,14 @@ export class DungeonGenerator {
 
                 this.rooms.push(newRoom);
             }
+        }
+
+        // Assign room types (after all rooms are created)
+        this.assignRoomTypes(floor);
+
+        // Carve rooms with their assigned types
+        for (const room of this.rooms) {
+            this.carveRoom(room);
         }
 
         // Add stairs
@@ -153,7 +159,14 @@ export class DungeonGenerator {
             // Skip first room (player spawn)
             for (let i = 1; i < this.rooms.length; i++) {
                 const room = this.rooms[i];
-                const numEnemies = 1 + Math.floor(Math.random() * (2 + Math.floor(floor / 3)));
+
+                // Adjust enemy count based on room type
+                let numEnemies = 1 + Math.floor(Math.random() * (2 + Math.floor(floor / 3)));
+                if (room.type === RoomType.CHALLENGE) {
+                    numEnemies = Math.floor(numEnemies * 2); // 2x enemies in challenge rooms
+                } else if (room.type === RoomType.TREASURE) {
+                    numEnemies = Math.max(1, Math.floor(numEnemies * 0.5)); // Fewer enemies in treasure rooms
+                }
 
                 for (let j = 0; j < numEnemies; j++) {
                     const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
@@ -208,35 +221,77 @@ export class DungeonGenerator {
 
         // Add items to some rooms
         for (let i = 1; i < this.rooms.length; i++) {
-            if (Math.random() < 0.5) { // 50% chance for items
-                const room = this.rooms[i];
-                const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
-                const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+            const room = this.rooms[i];
 
-                const rand = Math.random();
-                let type: ItemType;
+            // Special rooms always have items, normal rooms have 50% chance
+            const shouldSpawnItem = room.type === RoomType.TREASURE ||
+                                   room.type === RoomType.CHALLENGE ||
+                                   Math.random() < 0.5;
 
-                // Legendary items on floor 10+
-                if (floor >= 10 && rand < 0.05) { // 5% chance for legendary
-                    type = Math.random() < 0.5 ? ItemType.WEAPON_LEGENDARY_BLADE : ItemType.WEAPON_LEGENDARY_BOW;
-                } else if (rand < 0.45) {
-                    type = ItemType.HEALTH_POTION;
-                } else if (rand < 0.6) {
-                    type = ItemType.WEAPON_SWORD;
-                } else if (rand < 0.75) {
-                    type = ItemType.WEAPON_AXE;
-                } else if (rand < 0.88 && floor >= 3) {
-                    type = ItemType.WEAPON_BOW;
-                } else if (floor >= 5) {
-                    type = ItemType.WEAPON_STAFF;
-                } else {
-                    type = ItemType.WEAPON_SWORD;
+            if (shouldSpawnItem) {
+                // Treasure rooms get multiple items
+                const numItems = room.type === RoomType.TREASURE ?
+                    2 + Math.floor(Math.random() * 2) : // 2-3 items
+                    (room.type === RoomType.CHALLENGE ? 2 : 1); // Challenge rooms get 2, normal get 1
+
+                for (let itemNum = 0; itemNum < numItems; itemNum++) {
+                    const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+                    const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+
+                    const rand = Math.random();
+                    let type: ItemType;
+
+                    // Better loot in special rooms
+                    if (room.type === RoomType.TREASURE) {
+                        // Treasure rooms have high chance for good loot
+                        if (floor >= 10 && rand < 0.3) { // 30% chance for legendary
+                            type = Math.random() < 0.5 ? ItemType.WEAPON_LEGENDARY_BLADE : ItemType.WEAPON_LEGENDARY_BOW;
+                        } else if (rand < 0.4) {
+                            type = ItemType.HEALTH_POTION;
+                        } else if (rand < 0.6 && floor >= 5) {
+                            type = ItemType.WEAPON_STAFF;
+                        } else if (rand < 0.8 && floor >= 3) {
+                            type = ItemType.WEAPON_BOW;
+                        } else {
+                            type = ItemType.WEAPON_AXE;
+                        }
+                    } else if (room.type === RoomType.CHALLENGE) {
+                        // Challenge rooms reward with decent loot
+                        if (floor >= 10 && rand < 0.15) { // 15% chance for legendary
+                            type = Math.random() < 0.5 ? ItemType.WEAPON_LEGENDARY_BLADE : ItemType.WEAPON_LEGENDARY_BOW;
+                        } else if (rand < 0.3) {
+                            type = ItemType.HEALTH_POTION;
+                        } else if (rand < 0.6 && floor >= 5) {
+                            type = ItemType.WEAPON_STAFF;
+                        } else if (rand < 0.8 && floor >= 3) {
+                            type = ItemType.WEAPON_BOW;
+                        } else {
+                            type = ItemType.WEAPON_AXE;
+                        }
+                    } else {
+                        // Normal room loot
+                        if (floor >= 10 && rand < 0.05) { // 5% chance for legendary
+                            type = Math.random() < 0.5 ? ItemType.WEAPON_LEGENDARY_BLADE : ItemType.WEAPON_LEGENDARY_BOW;
+                        } else if (rand < 0.45) {
+                            type = ItemType.HEALTH_POTION;
+                        } else if (rand < 0.6) {
+                            type = ItemType.WEAPON_SWORD;
+                        } else if (rand < 0.75) {
+                            type = ItemType.WEAPON_AXE;
+                        } else if (rand < 0.88 && floor >= 3) {
+                            type = ItemType.WEAPON_BOW;
+                        } else if (floor >= 5) {
+                            type = ItemType.WEAPON_STAFF;
+                        } else {
+                            type = ItemType.WEAPON_SWORD;
+                        }
+                    }
+
+                    spawns.push({
+                        position: { x, y: 1.5, z },
+                        type
+                    });
                 }
-
-                spawns.push({
-                    position: { x, y: 1.5, z },
-                    type
-                });
             }
         }
 
@@ -250,6 +305,9 @@ export class DungeonGenerator {
         // Skip first room (player spawn) and last room (stairs)
         for (let i = 1; i < this.rooms.length - 1; i++) {
             const room = this.rooms[i];
+
+            // Don't place traps in treasure rooms, but DO place them in challenge rooms
+            if (room.type === RoomType.TREASURE) continue;
 
             // Try to place a few traps in each room
             for (let attempt = 0; attempt < 5; attempt++) {
@@ -274,11 +332,44 @@ export class DungeonGenerator {
                  room2.z + room2.depth + 2 < room1.z);
     }
 
+    private assignRoomTypes(floor: number): void {
+        if (this.rooms.length === 0) return;
+
+        // First room is always spawn (normal)
+        this.rooms[0].type = RoomType.NORMAL;
+
+        // Last room is always stairs (normal)
+        if (this.rooms.length > 1) {
+            this.rooms[this.rooms.length - 1].type = RoomType.NORMAL;
+        }
+
+        // Assign special types to middle rooms
+        for (let i = 1; i < this.rooms.length - 1; i++) {
+            const rand = Math.random();
+
+            if (rand < 0.15) { // 15% treasure rooms
+                this.rooms[i].type = RoomType.TREASURE;
+            } else if (rand < 0.30) { // 15% challenge rooms
+                this.rooms[i].type = RoomType.CHALLENGE;
+            } else {
+                this.rooms[i].type = RoomType.NORMAL;
+            }
+        }
+    }
+
     private carveRoom(room: Room): void {
+        // Determine floor type based on room type
+        let floorType = BlockType.FLOOR;
+        if (room.type === RoomType.TREASURE) {
+            floorType = BlockType.TREASURE_FLOOR;
+        } else if (room.type === RoomType.CHALLENGE) {
+            floorType = BlockType.CHALLENGE_FLOOR;
+        }
+
         // Floor
         for (let x = room.x; x < room.x + room.width; x++) {
             for (let z = room.z; z < room.z + room.depth; z++) {
-                this.setBlock(x, 0, z, BlockType.FLOOR);
+                this.setBlock(x, 0, z, floorType);
                 this.setBlock(x, 1, z, BlockType.AIR);
                 this.setBlock(x, 2, z, BlockType.AIR);
                 this.setBlock(x, 3, z, BlockType.AIR);
