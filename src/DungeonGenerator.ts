@@ -75,8 +75,8 @@ export class DungeonGenerator {
         };
     }
 
-    private generateEnemySpawns(floor: number): Array<{ position: Position; type: EnemyType }> {
-        const spawns: Array<{ position: Position; type: EnemyType }> = [];
+    private generateEnemySpawns(floor: number): Array<{ position: Position; type: EnemyType; isElite?: boolean }> {
+        const spawns: Array<{ position: Position; type: EnemyType; isElite?: boolean }> = [];
 
         // Boss floor every 5 floors
         const isBossFloor = floor % 5 === 0;
@@ -87,9 +87,20 @@ export class DungeonGenerator {
             const x = lastRoom.x + Math.floor(lastRoom.width / 2);
             const z = lastRoom.z + Math.floor(lastRoom.depth / 2);
 
+            // Different boss types based on floor
+            let bossType: EnemyType;
+            const bossRand = Math.random();
+            if (floor === 5 || (floor > 5 && bossRand < 0.4)) {
+                bossType = EnemyType.BOSS_OGRE;
+            } else if (bossRand < 0.7) {
+                bossType = EnemyType.BOSS_DRAGON;
+            } else {
+                bossType = EnemyType.BOSS_LICH;
+            }
+
             spawns.push({
                 position: { x, y: 1, z },
-                type: EnemyType.BOSS_OGRE
+                type: bossType
             });
 
             // Still spawn some regular enemies in other rooms
@@ -99,9 +110,13 @@ export class DungeonGenerator {
                     const rx = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
                     const rz = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
 
+                    // Boss floor enemies are more likely to be elite
+                    const isElite = Math.random() < 0.3; // 30% chance on boss floors
+
                     spawns.push({
                         position: { x: rx, y: 1, z: rz },
-                        type: EnemyType.ORC
+                        type: EnemyType.ORC,
+                        isElite
                     });
                 }
             }
@@ -144,9 +159,14 @@ export class DungeonGenerator {
                     // Bats spawn higher
                     const y = type === EnemyType.BAT ? 2.5 : 1;
 
+                    // Elite chance increases with floor (10% base + 1% per floor, capped at 25%)
+                    const eliteChance = Math.min(0.1 + (floor * 0.01), 0.25);
+                    const isElite = Math.random() < eliteChance;
+
                     spawns.push({
                         position: { x, y, z },
-                        type
+                        type,
+                        isElite
                     });
                 }
             }

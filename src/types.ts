@@ -31,7 +31,7 @@ export interface Dungeon {
     blocks: Uint8Array;
     rooms: Room[];
     spawnPoint: Position;
-    enemySpawns: Array<{ position: Position; type: EnemyType }>;
+    enemySpawns: Array<{ position: Position; type: EnemyType; isElite?: boolean }>;
     itemSpawns: Array<{ position: Position; type: ItemType }>;
 }
 
@@ -58,7 +58,9 @@ export enum EnemyType {
     SKELETON_ARCHER = 'skeleton_archer',
     ORC = 'orc',
     BAT = 'bat',
-    BOSS_OGRE = 'boss_ogre'
+    BOSS_OGRE = 'boss_ogre',
+    BOSS_DRAGON = 'boss_dragon',
+    BOSS_LICH = 'boss_lich'
 }
 
 export enum WeaponType {
@@ -84,4 +86,12 @@ export interface Enemy {
     damage: number;
     mesh?: THREE.Group;
     lastAttackTime: number;
+    isElite?: boolean;
+}
+
+export enum RoomType {
+    NORMAL = 'normal',
+    TREASURE = 'treasure',
+    SHRINE = 'shrine',
+    CHALLENGE = 'challenge'
 }

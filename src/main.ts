@@ -6,7 +6,7 @@ import { Enemy } from './Enemy';
 import { Item } from './Item';
 import { Projectile } from './Projectile';
 import { ParticleSystem, ParticleType } from './ParticleSystem';
-import { BlockType, WeaponType } from './types';
+import { BlockType, WeaponType, ItemType, Position } from './types';
 
 class Game {
     private renderer: THREE.WebGLRenderer;
@@ -42,6 +42,8 @@ class Game {
     private playerPosElement: HTMLElement;
     private crosshairElement: HTMLElement;
     private gameCanvas: HTMLCanvasElement;
+    private shrineModalElement: HTMLElement;
+    private shrineChoicesElement: HTMLElement;
 
     constructor() {
         // Setup renderer
@@ -87,6 +89,8 @@ class Game {
         this.comboCountElement = document.getElementById('combo-count')!;
         this.playerPosElement = document.getElementById('player-pos')!;
         this.crosshairElement = document.getElementById('crosshair')!;
+        this.shrineModalElement = document.getElementById('shrine-modal')!;
+        this.shrineChoicesElement = document.getElementById('shrine-choices')!;
 
         // Player callbacks
         this.player.onAttack((weaponType) => this.handlePlayerAttack(weaponType));
@@ -193,7 +197,8 @@ class Game {
                 `enemy_${enemyId++}`,
                 spawnData.type,
                 spawnData.position,
-                this.world
+                this.world,
+                spawnData.isElite || false
             );
             this.enemies.push(enemy);
             this.scene.add(enemy.getMesh());
@@ -299,20 +304,78 @@ class Game {
         const isDead = enemy.takeDamage(this.player.damage);
 
         if (isDead) {
+            // Elite enemies have golden explosion
+            const explosionColor = enemy.isElite ? 0xFFD700 : 0x8B0000;
             this.particleSystem.emitExplosion(
                 new THREE.Vector3(enemy.position.x, enemy.position.y + 1, enemy.position.z),
-                0x8B0000
+                explosionColor
             );
 
-            // Give XP based on enemy type
-            const xpReward = enemy.maxHealth; // XP = max HP
+            // Give XP based on enemy type (elite enemies give 2x XP)
+            const xpReward = enemy.isElite ? enemy.maxHealth * 2 : enemy.maxHealth;
             this.player.addExperience(xpReward);
+
+            // Life steal healing
+            if (this.player.lifeSteal > 0) {
+                this.player.health = Math.min(this.player.health + this.player.lifeSteal, this.player.maxHealth);
+                this.particleSystem.emitHealEffect(this.player.getPosition());
+            }
+
+            // Elite enemies drop guaranteed loot
+            if (enemy.isElite) {
+                this.spawnEliteLoot(enemy.position);
+            }
 
             this.scene.remove(enemy.getMesh());
             this.enemies.splice(index, 1);
             this.kills++;
-            console.log(`Enemy killed! Total kills: ${this.kills} | +${xpReward} XP`);
+            const eliteText = enemy.isElite ? ' ELITE' : '';
+            console.log(`${eliteText} Enemy killed! Total kills: ${this.kills} | +${xpReward} XP`);
         }
+    }
+
+    private spawnEliteLoot(position: Position): void {
+        // Elite enemies drop high-quality loot
+        const itemId = `elite_loot_${Date.now()}_${Math.random()}`;
+
+        // 40% chance for legendary weapon (if floor 10+), 30% health potion, 30% rare weapon
+        let itemType: ItemType;
+        const rand = Math.random();
+
+        if (this.currentFloor >= 10 && rand < 0.4) {
+            // Legendary weapons on high floors
+            itemType = Math.random() < 0.5 ? ItemType.WEAPON_LEGENDARY_BLADE : ItemType.WEAPON_LEGENDARY_BOW;
+        } else if (rand < 0.7) {
+            // Health potions
+            itemType = ItemType.HEALTH_POTION;
+        } else {
+            // Rare weapons
+            const weaponRand = Math.random();
+            if (weaponRand < 0.33) {
+                itemType = ItemType.WEAPON_AXE;
+            } else if (weaponRand < 0.66) {
+                itemType = ItemType.WEAPON_BOW;
+            } else {
+                itemType = ItemType.WEAPON_STAFF;
+            }
+        }
+
+        const itemPosition: Position = {
+            x: position.x,
+            y: position.y + 0.5,
+            z: position.z
+        };
+
+        const item = new Item(itemId, itemType, itemPosition);
+        this.items.push(item);
+        this.scene.add(item.getMesh());
+
+        // Sparkle effect for dropped items
+        this.particleSystem.emitSpark(
+            new THREE.Vector3(position.x, position.y + 1, position.z)
+        );
+
+        console.log(`Elite dropped: ${itemType}`);
     }
 
     private handleCombo(combo: number): void {
@@ -379,9 +442,8 @@ class Game {
         );
 
         if (block === BlockType.STAIRS_DOWN) {
-            this.currentFloor++;
-            console.log(`Descending to floor ${this.currentFloor}...`);
-            this.generateDungeon();
+            // Show shrine upgrade modal every floor
+            this.showShrineUpgrade();
         }
     }
 
@@ -493,6 +555,80 @@ class Game {
         // Update position (optional, can remove for cleaner UI)
         const pos = this.player.getPosition();
         this.playerPosElement.textContent = `${pos.x.toFixed(1)}, ${pos.y.toFixed(1)}, ${pos.z.toFixed(1)}`;
+    }
+
+    private showShrineUpgrade(): void {
+        // Pause game
+        this.isRunning = false;
+        document.exitPointerLock();
+
+        // Define all possible upgrades
+        const allUpgrades = [
+            { name: 'Vitality Boost', description: '+20 Max HP', apply: () => { this.player.maxHealth += 20; this.player.health += 20; } },
+            { name: 'Power Surge', description: '+5 Damage', apply: () => { this.player.damage += 5; } },
+            { name: 'Endurance Training', description: '+20 Max Stamina', apply: () => { this.player.maxStamina += 20; this.player.stamina += 20; } },
+            { name: 'Swift Strikes', description: '-15% Attack Cooldown', apply: () => { this.player.attackCooldown *= 0.85; } },
+            { name: 'Vampiric Touch', description: 'Heal 5 HP on kill', apply: () => { this.player.lifeSteal = (this.player.lifeSteal || 0) + 5; } },
+            { name: 'Battle Hardened', description: '+10 Max HP & +2 Damage', apply: () => { this.player.maxHealth += 10; this.player.health += 10; this.player.damage += 2; } }
+        ];
+
+        // Select 3 random upgrades
+        const shuffled = [...allUpgrades].sort(() => Math.random() - 0.5);
+        const choices = shuffled.slice(0, 3);
+
+        // Clear previous choices
+        this.shrineChoicesElement.innerHTML = '';
+
+        // Create buttons for each choice
+        choices.forEach((upgrade, index) => {
+            const button = document.createElement('button');
+            button.innerHTML = `
+                <div style="background: rgba(255, 215, 0, 0.1); border: 2px solid #FFD700; padding: 15px; cursor: pointer; transition: all 0.2s;">
+                    <div style="font-size: 18px; font-weight: bold; color: #FFD700; margin-bottom: 5px;">${upgrade.name}</div>
+                    <div style="font-size: 14px; color: #CCC;">${upgrade.description}</div>
+                </div>
+            `;
+            button.style.background = 'none';
+            button.style.border = 'none';
+            button.style.padding = '0';
+            button.style.cursor = 'pointer';
+            button.style.width = '100%';
+
+            button.onmouseover = () => {
+                button.firstElementChild!.setAttribute('style', 'background: rgba(255, 215, 0, 0.3); border: 2px solid #FFD700; padding: 15px; cursor: pointer; transform: scale(1.05); transition: all 0.2s;');
+            };
+            button.onmouseout = () => {
+                button.firstElementChild!.setAttribute('style', 'background: rgba(255, 215, 0, 0.1); border: 2px solid #FFD700; padding: 15px; cursor: pointer; transition: all 0.2s;');
+            };
+
+            button.onclick = () => {
+                upgrade.apply();
+                this.applyShrineUpgrade();
+            };
+
+            this.shrineChoicesElement.appendChild(button);
+        });
+
+        // Show modal
+        this.shrineModalElement.classList.remove('hidden');
+    }
+
+    private applyShrineUpgrade(): void {
+        // Hide shrine modal
+        this.shrineModalElement.classList.add('hidden');
+
+        // Heal player to full
+        this.player.health = this.player.maxHealth;
+        this.player.stamina = this.player.maxStamina;
+
+        // Advance to next floor
+        this.currentFloor++;
+        console.log(`Descending to floor ${this.currentFloor}...`);
+        this.generateDungeon();
+
+        // Resume game
+        this.isRunning = true;
+        document.body.requestPointerLock();
     }
 
     private gameOver(): void {

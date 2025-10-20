@@ -30,8 +30,9 @@ export class Player {
     public health = 100;
     public maxHealth = 100;
     public damage = 20;
+    public attackCooldown = 0.5; // seconds
+    public lifeSteal = 0; // HP gained per kill
     private lastAttackTime = 0;
-    private attackCooldown = 0.5; // seconds
     private attackRange = 3.0;
     private damageFlashTime = 0;
     private currentWeaponType: WeaponType = WeaponType.MELEE;

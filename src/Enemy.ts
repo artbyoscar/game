@@ -12,6 +12,7 @@ export class Enemy implements IEnemy {
     damage: number;
     mesh: THREE.Group;
     lastAttackTime: number = 0;
+    isElite: boolean = false;
 
     private velocity = new THREE.Vector3();
     private readonly gravity = 20.0;
@@ -22,8 +23,10 @@ export class Enemy implements IEnemy {
         id: string,
         type: EnemyType,
         position: Position,
-        private world: World
+        private world: World,
+        isElite: boolean = false
     ) {
+        this.isElite = isElite;
         this.id = id;
         this.type = type;
         this.position = position;
@@ -66,6 +69,26 @@ export class Enemy implements IEnemy {
                 this.speed = 1.0;
                 this.damage = 40;
                 break;
+            case EnemyType.BOSS_DRAGON:
+                this.health = 400;
+                this.maxHealth = 400;
+                this.speed = 1.5;
+                this.damage = 50;
+                break;
+            case EnemyType.BOSS_LICH:
+                this.health = 350;
+                this.maxHealth = 350;
+                this.speed = 0.8;
+                this.damage = 60;
+                break;
+        }
+
+        // Elite variants are stronger
+        if (this.isElite) {
+            this.health = Math.floor(this.health * 2);
+            this.maxHealth = Math.floor(this.maxHealth * 2);
+            this.damage = Math.floor(this.damage * 1.5);
+            this.speed *= 1.2;
         }
 
         this.mesh = this.createMesh();
@@ -112,8 +135,10 @@ export class Enemy implements IEnemy {
             return group;
         }
 
-        // Boss is bigger
-        const isBoss = this.type === EnemyType.BOSS_OGRE;
+        // Bosses are bigger
+        const isBoss = this.type === EnemyType.BOSS_OGRE ||
+                       this.type === EnemyType.BOSS_DRAGON ||
+                       this.type === EnemyType.BOSS_LICH;
         const scale = isBoss ? 2.0 : 1.0;
 
         // Body
@@ -134,11 +159,26 @@ export class Enemy implements IEnemy {
             case EnemyType.BOSS_OGRE:
                 bodyColor = 0x4B0082; // Indigo (purple)
                 break;
+            case EnemyType.BOSS_DRAGON:
+                bodyColor = 0x8B0000; // Dark red
+                break;
+            case EnemyType.BOSS_LICH:
+                bodyColor = 0x000080; // Dark blue
+                break;
             default:
                 bodyColor = 0xFF0000;
         }
 
-        const bodyMaterial = new THREE.MeshLambertMaterial({ color: bodyColor });
+        // Elite enemies glow gold
+        if (this.isElite) {
+            bodyColor = 0xFFD700; // Gold
+        }
+
+        const bodyMaterial = new THREE.MeshLambertMaterial({
+            color: bodyColor,
+            emissive: this.isElite ? 0xFFD700 : 0x000000,
+            emissiveIntensity: this.isElite ? 0.5 : 0
+        });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
         body.position.y = 0.6 * scale;
         body.castShadow = true;
