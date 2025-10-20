@@ -1,0 +1,147 @@
+import { BlockType, Dungeon, Room, Position } from './types';
+
+export class DungeonGenerator {
+    private width: number;
+    private height: number;
+    private depth: number;
+    private blocks: Uint8Array;
+    private rooms: Room[] = [];
+
+    constructor(width = 50, height = 10, depth = 50) {
+        this.width = width;
+        this.height = height;
+        this.depth = depth;
+        this.blocks = new Uint8Array(width * height * depth);
+    }
+
+    generate(floor: number): Dungeon {
+        this.rooms = [];
+        this.blocks.fill(BlockType.STONE);
+
+        // Generate rooms
+        const numRooms = 5 + Math.floor(Math.random() * 5);
+
+        for (let i = 0; i < numRooms; i++) {
+            const roomWidth = 5 + Math.floor(Math.random() * 8);
+            const roomDepth = 5 + Math.floor(Math.random() * 8);
+            const x = 2 + Math.floor(Math.random() * (this.width - roomWidth - 4));
+            const z = 2 + Math.floor(Math.random() * (this.depth - roomDepth - 4));
+
+            const newRoom: Room = { x, z, width: roomWidth, depth: roomDepth };
+
+            // Check for overlaps
+            let overlaps = false;
+            for (const room of this.rooms) {
+                if (this.roomsOverlap(newRoom, room)) {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if (!overlaps) {
+                this.carveRoom(newRoom);
+
+                // Connect to previous room with corridor
+                if (this.rooms.length > 0) {
+                    const prevRoom = this.rooms[this.rooms.length - 1];
+                    this.carveCorridor(prevRoom, newRoom);
+                }
+
+                this.rooms.push(newRoom);
+            }
+        }
+
+        // Add stairs
+        if (this.rooms.length > 0) {
+            const lastRoom = this.rooms[this.rooms.length - 1];
+            const stairX = lastRoom.x + Math.floor(lastRoom.width / 2);
+            const stairZ = lastRoom.z + Math.floor(lastRoom.depth / 2);
+            this.setBlock(stairX, 1, stairZ, BlockType.STAIRS_DOWN);
+        }
+
+        const spawnPoint: Position = this.getSpawnPoint();
+
+        return {
+            width: this.width,
+            height: this.height,
+            depth: this.depth,
+            blocks: this.blocks,
+            rooms: this.rooms,
+            spawnPoint
+        };
+    }
+
+    private roomsOverlap(room1: Room, room2: Room): boolean {
+        return !(room1.x + room1.width + 2 < room2.x ||
+                 room2.x + room2.width + 2 < room1.x ||
+                 room1.z + room1.depth + 2 < room2.z ||
+                 room2.z + room2.depth + 2 < room1.z);
+    }
+
+    private carveRoom(room: Room): void {
+        // Floor
+        for (let x = room.x; x < room.x + room.width; x++) {
+            for (let z = room.z; z < room.z + room.depth; z++) {
+                this.setBlock(x, 0, z, BlockType.FLOOR);
+                this.setBlock(x, 1, z, BlockType.AIR);
+                this.setBlock(x, 2, z, BlockType.AIR);
+                this.setBlock(x, 3, z, BlockType.AIR);
+                this.setBlock(x, 4, z, BlockType.CEILING);
+            }
+        }
+    }
+
+    private carveCorridor(room1: Room, room2: Room): void {
+        const x1 = room1.x + Math.floor(room1.width / 2);
+        const z1 = room1.z + Math.floor(room1.depth / 2);
+        const x2 = room2.x + Math.floor(room2.width / 2);
+        const z2 = room2.z + Math.floor(room2.depth / 2);
+
+        // Horizontal corridor
+        const startX = Math.min(x1, x2);
+        const endX = Math.max(x1, x2);
+        for (let x = startX; x <= endX; x++) {
+            this.setBlock(x, 0, z1, BlockType.FLOOR);
+            this.setBlock(x, 1, z1, BlockType.AIR);
+            this.setBlock(x, 2, z1, BlockType.AIR);
+            this.setBlock(x, 3, z1, BlockType.AIR);
+            this.setBlock(x, 4, z1, BlockType.CEILING);
+        }
+
+        // Vertical corridor
+        const startZ = Math.min(z1, z2);
+        const endZ = Math.max(z1, z2);
+        for (let z = startZ; z <= endZ; z++) {
+            this.setBlock(x2, 0, z, BlockType.FLOOR);
+            this.setBlock(x2, 1, z, BlockType.AIR);
+            this.setBlock(x2, 2, z, BlockType.AIR);
+            this.setBlock(x2, 3, z, BlockType.AIR);
+            this.setBlock(x2, 4, z, BlockType.CEILING);
+        }
+    }
+
+    private getSpawnPoint(): Position {
+        if (this.rooms.length > 0) {
+            const room = this.rooms[0];
+            return {
+                x: room.x + Math.floor(room.width / 2),
+                y: 2,
+                z: room.z + Math.floor(room.depth / 2)
+            };
+        }
+        return { x: this.width / 2, y: 2, z: this.depth / 2 };
+    }
+
+    private setBlock(x: number, y: number, z: number, type: BlockType): void {
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height && z >= 0 && z < this.depth) {
+            this.blocks[x + y * this.width + z * this.width * this.height] = type;
+        }
+    }
+
+    getBlock(x: number, y: number, z: number): BlockType {
+        if (x < 0 || x >= this.width || y < 0 || y >= this.height || z < 0 || z >= this.depth) {
+            return BlockType.STONE;
+        }
+        return this.blocks[Math.floor(x) + Math.floor(y) * this.width + Math.floor(z) * this.width * this.height];
+    }
+}
