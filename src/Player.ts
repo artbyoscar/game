@@ -25,6 +25,18 @@ export class Player {
     private pitch = 0;
     private readonly mouseSensitivity = 0.002;
 
+    // Combat and health
+    public health = 100;
+    public maxHealth = 100;
+    public damage = 20;
+    private lastAttackTime = 0;
+    private readonly attackCooldown = 0.5; // seconds
+    private readonly attackRange = 3.0;
+    private damageFlashTime = 0;
+
+    private onAttackCallback?: () => void;
+    private onDamageCallback?: () => void;
+
     constructor(camera: THREE.PerspectiveCamera, world: World) {
         this.camera = camera;
         this.world = world;
@@ -64,6 +76,13 @@ export class Player {
                 this.yaw -= e.movementX * this.mouseSensitivity;
                 this.pitch -= e.movementY * this.mouseSensitivity;
                 this.pitch = Math.max(-Math.PI / 2, Math.min(Math.PI / 2, this.pitch));
+            }
+        });
+
+        // Attack on click
+        document.addEventListener('mousedown', (e) => {
+            if (document.pointerLockElement === document.body && e.button === 0) {
+                this.attack();
             }
         });
     }
@@ -182,5 +201,68 @@ export class Player {
 
     getPosition(): THREE.Vector3 {
         return this.camera.position.clone();
+    }
+
+    attack(): void {
+        const currentTime = performance.now() / 1000;
+        if (currentTime - this.lastAttackTime < this.attackCooldown) {
+            return;
+        }
+
+        this.lastAttackTime = currentTime;
+
+        if (this.onAttackCallback) {
+            this.onAttackCallback();
+        }
+    }
+
+    takeDamage(amount: number): void {
+        this.health = Math.max(0, this.health - amount);
+        this.damageFlashTime = 0.3; // Flash for 0.3 seconds
+
+        if (this.onDamageCallback) {
+            this.onDamageCallback();
+        }
+    }
+
+    heal(amount: number): void {
+        this.health = Math.min(this.maxHealth, this.health + amount);
+    }
+
+    setWeapon(damage: number): void {
+        this.damage = damage;
+    }
+
+    getForwardDirection(): THREE.Vector3 {
+        return new THREE.Vector3(0, 0, -1)
+            .applyAxisAngle(new THREE.Vector3(0, 1, 0), this.yaw)
+            .applyAxisAngle(new THREE.Vector3(1, 0, 0), this.pitch)
+            .normalize();
+    }
+
+    getAttackRange(): number {
+        return this.attackRange;
+    }
+
+    getDamageFlash(): number {
+        return this.damageFlashTime;
+    }
+
+    updateDamageFlash(deltaTime: number): void {
+        if (this.damageFlashTime > 0) {
+            this.damageFlashTime = Math.max(0, this.damageFlashTime - deltaTime);
+        }
+    }
+
+    onAttack(callback: () => void): void {
+        this.onAttackCallback = callback;
+    }
+
+    onDamage(callback: () => void): void {
+        this.onDamageCallback = callback;
+    }
+
+    isDead(): boolean {
+        return this.health <= 0;
     }
 }

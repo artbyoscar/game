@@ -1,4 +1,4 @@
-import { BlockType, Dungeon, Room, Position } from './types';
+import { BlockType, Dungeon, Room, Position, EnemyType, ItemType } from './types';
 
 export class DungeonGenerator {
     private width: number;
@@ -60,6 +60,8 @@ export class DungeonGenerator {
         }
 
         const spawnPoint: Position = this.getSpawnPoint();
+        const enemySpawns = this.generateEnemySpawns(floor);
+        const itemSpawns = this.generateItemSpawns(floor);
 
         return {
             width: this.width,
@@ -67,8 +69,74 @@ export class DungeonGenerator {
             depth: this.depth,
             blocks: this.blocks,
             rooms: this.rooms,
-            spawnPoint
+            spawnPoint,
+            enemySpawns,
+            itemSpawns
         };
+    }
+
+    private generateEnemySpawns(floor: number): Array<{ position: Position; type: EnemyType }> {
+        const spawns: Array<{ position: Position; type: EnemyType }> = [];
+        const enemyTypes = [EnemyType.GOBLIN, EnemyType.SKELETON, EnemyType.ORC];
+
+        // Skip first room (player spawn)
+        for (let i = 1; i < this.rooms.length; i++) {
+            const room = this.rooms[i];
+            const numEnemies = 1 + Math.floor(Math.random() * (2 + Math.floor(floor / 3)));
+
+            for (let j = 0; j < numEnemies; j++) {
+                const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+                const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+
+                // Weighted selection based on floor
+                let type: EnemyType;
+                const rand = Math.random();
+                if (floor < 3) {
+                    type = rand < 0.7 ? EnemyType.GOBLIN : EnemyType.SKELETON;
+                } else if (floor < 6) {
+                    type = rand < 0.4 ? EnemyType.GOBLIN : (rand < 0.8 ? EnemyType.SKELETON : EnemyType.ORC);
+                } else {
+                    type = rand < 0.2 ? EnemyType.GOBLIN : (rand < 0.6 ? EnemyType.SKELETON : EnemyType.ORC);
+                }
+
+                spawns.push({
+                    position: { x, y: 1, z },
+                    type
+                });
+            }
+        }
+
+        return spawns;
+    }
+
+    private generateItemSpawns(floor: number): Array<{ position: Position; type: ItemType }> {
+        const spawns: Array<{ position: Position; type: ItemType }> = [];
+
+        // Add items to some rooms
+        for (let i = 1; i < this.rooms.length; i++) {
+            if (Math.random() < 0.4) { // 40% chance for items
+                const room = this.rooms[i];
+                const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+                const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+
+                const rand = Math.random();
+                let type: ItemType;
+                if (rand < 0.6) {
+                    type = ItemType.HEALTH_POTION;
+                } else if (rand < 0.85) {
+                    type = ItemType.WEAPON_SWORD;
+                } else {
+                    type = ItemType.WEAPON_AXE;
+                }
+
+                spawns.push({
+                    position: { x, y: 1.5, z },
+                    type
+                });
+            }
+        }
+
+        return spawns;
     }
 
     private roomsOverlap(room1: Room, room2: Room): boolean {

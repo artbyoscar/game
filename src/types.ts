@@ -1,3 +1,5 @@
+import * as THREE from 'three';
+
 export enum BlockType {
     AIR = 0,
     STONE = 1,
@@ -29,4 +31,37 @@ export interface Dungeon {
     blocks: Uint8Array;
     rooms: Room[];
     spawnPoint: Position;
+    enemySpawns: Array<{ position: Position; type: EnemyType }>;
+    itemSpawns: Array<{ position: Position; type: ItemType }>;
+}
+
+export enum ItemType {
+    HEALTH_POTION = 'health_potion',
+    WEAPON_SWORD = 'weapon_sword',
+    WEAPON_AXE = 'weapon_axe'
+}
+
+export interface Item {
+    id: string;
+    type: ItemType;
+    position: Position;
+    mesh?: THREE.Mesh;
+}
+
+export enum EnemyType {
+    GOBLIN = 'goblin',
+    SKELETON = 'skeleton',
+    ORC = 'orc'
+}
+
+export interface Enemy {
+    id: string;
+    type: EnemyType;
+    position: Position;
+    health: number;
+    maxHealth: number;
+    speed: number;
+    damage: number;
+    mesh?: THREE.Group;
+    lastAttackTime: number;
 }

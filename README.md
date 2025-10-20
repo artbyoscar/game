@@ -4,11 +4,13 @@ A roguelike voxel dungeon crawler built with Three.js and TypeScript.
 
 ## Features
 
-- Procedurally generated dungeons
-- First-person controls
-- Voxel-based 3D graphics
-- Physics and collision detection
-- Dynamic lighting
+- **Procedurally Generated Dungeons** - Unique layouts every playthrough
+- **Combat System** - Melee attacks with directional aiming
+- **Enemy AI** - Three enemy types (Goblins, Skeletons, Orcs) that chase and attack
+- **Item System** - Health potions and weapons to find
+- **Floor Progression** - Descend deeper into the dungeon with increasing difficulty
+- **Voxel Graphics** - Retro 3D aesthetic with dynamic lighting
+- **Physics & Collision** - Realistic movement and interactions
 
 ## Getting Started
 
@@ -32,19 +34,35 @@ npm run build
 - **WASD** - Move
 - **Mouse** - Look around
 - **Space** - Jump
-- **Click** - Start game / Lock pointer
+- **Left Click** - Attack
+- **E** - Pick up items
+- **Stand on green stairs** - Descend to next floor
 
-## Development Status
+## Gameplay
 
-This is an early prototype. Current features:
-- Basic dungeon generation with rooms and corridors
-- First-person movement with collision detection
-- Procedural level generation
-- Dynamic torch lighting
+- Fight through procedurally generated dungeons
+- Collect health potions and weapons to survive
+- Enemies get stronger with each floor
+- Try to survive as long as possible!
 
-Coming soon:
-- Combat system
-- Enemies
-- Items and inventory
-- Multiple floor descent
-- Procedural loot
+## Features Implemented
+
+- Procedural dungeon generation with rooms and corridors
+- First-person movement with physics and collision detection
+- Three enemy types with AI pathfinding and combat
+- Health system with visual damage feedback
+- Item pickups (health potions, swords, axes)
+- Floor progression system
+- Dynamic torch lighting and fog
+- Health bars for enemies
+- Game over screen with stats
+
+## Future Enhancements
+
+- More enemy types and behaviors
+- Magic and ranged weapons
+- Boss fights
+- Permanent upgrades between runs
+- Better particle effects
+- Sound effects and music
+- Minimap

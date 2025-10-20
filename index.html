@@ -98,14 +98,30 @@
 <body>
     <div id="menu">
         <h1>VOXEL DUNGEON</h1>
-        <p>Click to Start</p>
-        <p style="margin-top: 20px; font-size: 12px;">WASD - Move | SPACE - Jump | Mouse - Look</p>
+        <p>A Roguelike Adventure</p>
+        <p style="margin-top: 20px; font-size: 14px;">
+            <strong>Controls:</strong><br>
+            WASD - Move | Mouse - Look | SPACE - Jump<br>
+            Click - Attack | E - Pick Up Items<br>
+            Stand on stairs to descend
+        </p>
+        <p style="margin-top: 20px; font-size: 16px; cursor: pointer;">Click to Start</p>
     </div>
 
     <div id="hud" class="hidden">
-        <div>Floor: <span id="floor-level">1</span></div>
-        <div>HP: <span id="player-hp">100</span></div>
-        <div>Position: <span id="player-pos">0, 0, 0</span></div>
+        <div style="font-size: 20px; margin-bottom: 10px;">
+            <strong>Floor:</strong> <span id="floor-level">1</span>
+        </div>
+        <div style="font-size: 18px; color: #ff6b6b;">
+            <strong>HP:</strong> <span id="player-hp">100/100</span>
+        </div>
+        <div style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
+            <div>Position: <span id="player-pos">0, 0, 0</span></div>
+            <div style="margin-top: 10px;">
+                Click - Attack<br>
+                E - Pick Up
+            </div>
+        </div>
     </div>
 
     <div id="crosshair" class="hidden"></div>
