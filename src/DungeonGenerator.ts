@@ -59,6 +59,9 @@ export class DungeonGenerator {
             this.setBlock(stairX, 1, stairZ, BlockType.STAIRS_DOWN);
         }
 
+        // Add spike traps (more common on deeper floors)
+        this.placeTraps(floor);
+
         const spawnPoint: Position = this.getSpawnPoint();
         const enemySpawns = this.generateEnemySpawns(floor);
         const itemSpawns = this.generateItemSpawns(floor);
@@ -80,6 +83,10 @@ export class DungeonGenerator {
 
         // Boss floor every 5 floors
         const isBossFloor = floor % 5 === 0;
+
+        // Mini-boss chance on non-boss floors (5% base + 1% per floor, capped at 20%)
+        const miniBossChance = Math.min(0.05 + (floor * 0.01), 0.20);
+        const shouldSpawnMiniBoss = !isBossFloor && Math.random() < miniBossChance;
 
         if (isBossFloor) {
             // Spawn boss in the last room
@@ -121,6 +128,27 @@ export class DungeonGenerator {
                 }
             }
         } else {
+            // Mini-boss spawning
+            if (shouldSpawnMiniBoss && this.rooms.length > 2) {
+                // Spawn mini-boss in a random room (not first or last)
+                const roomIndex = 1 + Math.floor(Math.random() * (this.rooms.length - 2));
+                const room = this.rooms[roomIndex];
+                const x = room.x + Math.floor(room.width / 2);
+                const z = room.z + Math.floor(room.depth / 2);
+
+                // Choose mini-boss type
+                const miniBossType = Math.random() < 0.5 ?
+                    EnemyType.MINI_BOSS_TROLL :
+                    EnemyType.MINI_BOSS_WRAITH;
+
+                spawns.push({
+                    position: { x, y: 1, z },
+                    type: miniBossType
+                });
+
+                console.log(`Mini-boss spawned: ${miniBossType} on floor ${floor}`);
+            }
+
             // Regular enemy spawning
             // Skip first room (player spawn)
             for (let i = 1; i < this.rooms.length; i++) {
@@ -213,6 +241,30 @@ export class DungeonGenerator {
         }
 
         return spawns;
+    }
+
+    private placeTraps(floor: number): void {
+        // Trap chance increases with floor level (5% base + 2% per floor, capped at 35%)
+        const trapChance = Math.min(0.05 + (floor * 0.02), 0.35);
+
+        // Skip first room (player spawn) and last room (stairs)
+        for (let i = 1; i < this.rooms.length - 1; i++) {
+            const room = this.rooms[i];
+
+            // Try to place a few traps in each room
+            for (let attempt = 0; attempt < 5; attempt++) {
+                if (Math.random() < trapChance) {
+                    // Don't place traps too close to edges or doors
+                    const x = room.x + 2 + Math.floor(Math.random() * (room.width - 4));
+                    const z = room.z + 2 + Math.floor(Math.random() * (room.depth - 4));
+
+                    // Only place if it's currently a floor
+                    if (this.getBlock(x, 0, z) === BlockType.FLOOR) {
+                        this.setBlock(x, 0, z, BlockType.SPIKE_TRAP);
+                    }
+                }
+            }
+        }
     }
 
     private roomsOverlap(room1: Room, room2: Room): boolean {

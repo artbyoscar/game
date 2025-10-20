@@ -447,6 +447,41 @@ class Game {
         }
     }
 
+    private spikeTrapCooldown = 0;
+
+    private checkHazards(deltaTime: number): void {
+        // Update spike trap cooldown
+        if (this.spikeTrapCooldown > 0) {
+            this.spikeTrapCooldown -= deltaTime;
+        }
+
+        const playerPos = this.player.getPosition();
+        const block = this.world.getBlock(
+            Math.floor(playerPos.x),
+            Math.floor(playerPos.y - 1.5),
+            Math.floor(playerPos.z)
+        );
+
+        // Spike trap damage
+        if (block === BlockType.SPIKE_TRAP && this.spikeTrapCooldown <= 0) {
+            const trapDamage = 10;
+            this.player.takeDamage(trapDamage);
+            this.spikeTrapCooldown = 1.0; // 1 second cooldown between trap hits
+
+            // Blood particle effect
+            this.particleSystem.emitBloodSplatter(
+                playerPos,
+                new THREE.Vector3(0, 1, 0)
+            );
+
+            console.log(`Ouch! Spike trap hit for ${trapDamage} damage! HP: ${this.player.health}`);
+
+            if (this.player.isDead()) {
+                this.gameOver();
+            }
+        }
+    }
+
     private updateEnemies(deltaTime: number): void {
         const playerPos = this.player.getPosition();
         const currentTime = performance.now() / 1000;
@@ -662,6 +697,7 @@ class Game {
             this.updateProjectiles(deltaTime);
             this.particleSystem.update(deltaTime);
             this.checkStairs();
+            this.checkHazards(deltaTime);
             this.updateHUD();
         }
 

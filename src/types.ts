@@ -8,7 +8,8 @@ export enum BlockType {
     CEILING = 4,
     DOOR = 5,
     STAIRS_DOWN = 6,
-    STAIRS_UP = 7
+    STAIRS_UP = 7,
+    SPIKE_TRAP = 8
 }
 
 export interface Position {
@@ -58,6 +59,8 @@ export enum EnemyType {
     SKELETON_ARCHER = 'skeleton_archer',
     ORC = 'orc',
     BAT = 'bat',
+    MINI_BOSS_TROLL = 'mini_boss_troll',
+    MINI_BOSS_WRAITH = 'mini_boss_wraith',
     BOSS_OGRE = 'boss_ogre',
     BOSS_DRAGON = 'boss_dragon',
     BOSS_LICH = 'boss_lich'

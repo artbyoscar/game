@@ -61,9 +61,19 @@ export class Player {
     private onComboCallback?: (combo: number) => void;
     private onLevelUpCallback?: () => void;
 
+    // Weapon model
+    private weaponModel: THREE.Group;
+    private weaponBobTime = 0;
+    private weaponSwingTime = 0;
+    private isAttacking = false;
+
     constructor(camera: THREE.PerspectiveCamera, world: World) {
         this.camera = camera;
         this.world = world;
+
+        // Create weapon model
+        this.weaponModel = this.createWeaponModel(WeaponType.MELEE);
+        this.camera.add(this.weaponModel);
 
         this.setupControls();
     }
@@ -192,6 +202,56 @@ export class Player {
 
         // Update camera rotation
         this.camera.rotation.set(this.pitch, this.yaw, 0, 'YXZ');
+
+        // Update weapon animation
+        this.updateWeaponAnimation(deltaTime);
+    }
+
+    private updateWeaponAnimation(deltaTime: number): void {
+        const isMoving = this.direction.length() > 0 && !this.isDashing;
+
+        // Weapon bob while walking
+        if (isMoving) {
+            this.weaponBobTime += deltaTime * 10;
+            const bobY = Math.sin(this.weaponBobTime) * 0.03;
+            const bobX = Math.cos(this.weaponBobTime * 0.5) * 0.02;
+            this.weaponModel.position.set(bobX, bobY, 0);
+        } else {
+            // Smooth return to idle position
+            this.weaponBobTime = 0;
+            this.weaponModel.position.lerp(new THREE.Vector3(0, 0, 0), deltaTime * 5);
+        }
+
+        // Attack swing animation
+        if (this.isAttacking) {
+            this.weaponSwingTime += deltaTime * 8;
+            if (this.weaponSwingTime >= Math.PI) {
+                this.isAttacking = false;
+                this.weaponSwingTime = 0;
+            }
+
+            // Different swing patterns for different weapons
+            const swingProgress = Math.sin(this.weaponSwingTime);
+
+            if (this.currentWeaponType === WeaponType.BOW ||
+                this.currentWeaponType === WeaponType.LEGENDARY_BOW) {
+                // Pull back motion for bows
+                this.weaponModel.rotation.x = -swingProgress * 0.3;
+                this.weaponModel.position.z = -swingProgress * 0.2;
+            } else if (this.currentWeaponType === WeaponType.STAFF) {
+                // Forward thrust for staff
+                this.weaponModel.rotation.x = swingProgress * 0.5;
+                this.weaponModel.position.z = -swingProgress * 0.3;
+            } else {
+                // Swing motion for melee weapons
+                this.weaponModel.rotation.y = -swingProgress * 0.8;
+                this.weaponModel.rotation.x = -swingProgress * 0.4;
+            }
+        } else if (this.weaponSwingTime === 0) {
+            // Smooth return to idle rotation
+            this.weaponModel.rotation.x *= 0.9;
+            this.weaponModel.rotation.y *= 0.9;
+        }
     }
 
     private handleCollisions(newPosition: THREE.Vector3): number {
@@ -266,6 +326,10 @@ export class Player {
 
         this.lastAttackTime = currentTime;
 
+        // Trigger weapon swing animation
+        this.isAttacking = true;
+        this.weaponSwingTime = 0;
+
         if (this.onAttackCallback) {
             this.onAttackCallback(this.currentWeaponType);
         }
@@ -289,10 +353,163 @@ export class Player {
         this.attackRange = stats.range;
         this.attackCooldown = stats.cooldown;
         this.currentWeaponType = stats.type;
+
+        // Update weapon model
+        this.camera.remove(this.weaponModel);
+        this.weaponModel = this.createWeaponModel(stats.type);
+        this.camera.add(this.weaponModel);
     }
 
     getWeaponType(): WeaponType {
         return this.currentWeaponType;
+    }
+
+    private createWeaponModel(type: WeaponType): THREE.Group {
+        const weaponGroup = new THREE.Group();
+
+        switch (type) {
+            case WeaponType.MELEE:
+                // Simple sword
+                const bladeMaterial = new THREE.MeshLambertMaterial({ color: 0xCCCCCC });
+                const blade = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.08, 0.8, 0.02),
+                    bladeMaterial
+                );
+                blade.position.set(0.3, -0.4, -0.5);
+                blade.rotation.z = Math.PI / 4;
+                weaponGroup.add(blade);
+
+                const hilt = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.15, 0.03, 0.03),
+                    new THREE.MeshLambertMaterial({ color: 0x8B4513 })
+                );
+                hilt.position.set(0.3, -0.8, -0.5);
+                hilt.rotation.z = Math.PI / 4;
+                weaponGroup.add(hilt);
+                break;
+
+            case WeaponType.AXE:
+                // Battle axe
+                const axeHandle = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.03, 0.03, 0.9),
+                    new THREE.MeshLambertMaterial({ color: 0x654321 })
+                );
+                axeHandle.position.set(0.3, -0.5, -0.5);
+                axeHandle.rotation.z = Math.PI / 4;
+                weaponGroup.add(axeHandle);
+
+                const axeBlade = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.25, 0.15, 0.04),
+                    new THREE.MeshLambertMaterial({ color: 0x888888 })
+                );
+                axeBlade.position.set(0.15, -0.1, -0.5);
+                axeBlade.rotation.z = Math.PI / 4;
+                weaponGroup.add(axeBlade);
+                break;
+
+            case WeaponType.BOW:
+                // Bow
+                const bowString = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.02, 0.6, 0.02),
+                    new THREE.MeshLambertMaterial({ color: 0x8B4513 })
+                );
+                bowString.position.set(0.3, -0.4, -0.5);
+                weaponGroup.add(bowString);
+
+                const bowCurve1 = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.02, 0.4, 0.02),
+                    new THREE.MeshLambertMaterial({ color: 0x654321 })
+                );
+                bowCurve1.position.set(0.35, -0.25, -0.5);
+                bowCurve1.rotation.z = -0.3;
+                weaponGroup.add(bowCurve1);
+
+                const bowCurve2 = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.02, 0.4, 0.02),
+                    new THREE.MeshLambertMaterial({ color: 0x654321 })
+                );
+                bowCurve2.position.set(0.35, -0.55, -0.5);
+                bowCurve2.rotation.z = 0.3;
+                weaponGroup.add(bowCurve2);
+                break;
+
+            case WeaponType.STAFF:
+                // Magic staff
+                const staff = new THREE.Mesh(
+                    new THREE.CylinderGeometry(0.04, 0.04, 1.0),
+                    new THREE.MeshLambertMaterial({ color: 0x4B0082 })
+                );
+                staff.position.set(0.3, -0.5, -0.5);
+                staff.rotation.z = Math.PI / 6;
+                weaponGroup.add(staff);
+
+                const orb = new THREE.Mesh(
+                    new THREE.SphereGeometry(0.08),
+                    new THREE.MeshLambertMaterial({
+                        color: 0x9370DB,
+                        emissive: 0x9370DB,
+                        emissiveIntensity: 0.5
+                    })
+                );
+                orb.position.set(0.2, 0, -0.5);
+                weaponGroup.add(orb);
+                break;
+
+            case WeaponType.LEGENDARY_BLADE:
+                // Legendary glowing blade
+                const legBlade = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.1, 1.0, 0.03),
+                    new THREE.MeshLambertMaterial({
+                        color: 0xFFD700,
+                        emissive: 0xFFD700,
+                        emissiveIntensity: 0.7
+                    })
+                );
+                legBlade.position.set(0.3, -0.3, -0.5);
+                legBlade.rotation.z = Math.PI / 4;
+                weaponGroup.add(legBlade);
+
+                const legHilt = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.2, 0.04, 0.04),
+                    new THREE.MeshLambertMaterial({ color: 0xFFD700 })
+                );
+                legHilt.position.set(0.3, -0.8, -0.5);
+                legHilt.rotation.z = Math.PI / 4;
+                weaponGroup.add(legHilt);
+                break;
+
+            case WeaponType.LEGENDARY_BOW:
+                // Legendary bow
+                const legBowBody = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.03, 0.7, 0.03),
+                    new THREE.MeshLambertMaterial({
+                        color: 0xFFD700,
+                        emissive: 0xFFD700,
+                        emissiveIntensity: 0.5
+                    })
+                );
+                legBowBody.position.set(0.3, -0.4, -0.5);
+                weaponGroup.add(legBowBody);
+
+                const legCurve1 = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.03, 0.45, 0.03),
+                    new THREE.MeshLambertMaterial({ color: 0xFFD700 })
+                );
+                legCurve1.position.set(0.38, -0.22, -0.5);
+                legCurve1.rotation.z = -0.4;
+                weaponGroup.add(legCurve1);
+
+                const legCurve2 = new THREE.Mesh(
+                    new THREE.BoxGeometry(0.03, 0.45, 0.03),
+                    new THREE.MeshLambertMaterial({ color: 0xFFD700 })
+                );
+                legCurve2.position.set(0.38, -0.58, -0.5);
+                legCurve2.rotation.z = 0.4;
+                weaponGroup.add(legCurve2);
+                break;
+        }
+
+        return weaponGroup;
     }
 
     getForwardDirection(): THREE.Vector3 {

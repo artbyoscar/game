@@ -63,6 +63,18 @@ export class Enemy implements IEnemy {
                 this.speed = 1.5;
                 this.damage = 25;
                 break;
+            case EnemyType.MINI_BOSS_TROLL:
+                this.health = 150;
+                this.maxHealth = 150;
+                this.speed = 1.2;
+                this.damage = 30;
+                break;
+            case EnemyType.MINI_BOSS_WRAITH:
+                this.health = 120;
+                this.maxHealth = 120;
+                this.speed = 2.0;
+                this.damage = 35;
+                break;
             case EnemyType.BOSS_OGRE:
                 this.health = 300;
                 this.maxHealth = 300;
@@ -135,11 +147,13 @@ export class Enemy implements IEnemy {
             return group;
         }
 
-        // Bosses are bigger
+        // Bosses and mini-bosses are bigger
         const isBoss = this.type === EnemyType.BOSS_OGRE ||
                        this.type === EnemyType.BOSS_DRAGON ||
                        this.type === EnemyType.BOSS_LICH;
-        const scale = isBoss ? 2.0 : 1.0;
+        const isMiniBoss = this.type === EnemyType.MINI_BOSS_TROLL ||
+                           this.type === EnemyType.MINI_BOSS_WRAITH;
+        const scale = isBoss ? 2.0 : (isMiniBoss ? 1.5 : 1.0);
 
         // Body
         const bodyGeometry = new THREE.BoxGeometry(0.6 * scale, 1.2 * scale, 0.4 * scale);
@@ -155,6 +169,12 @@ export class Enemy implements IEnemy {
                 break;
             case EnemyType.ORC:
                 bodyColor = 0x8B4513; // Brown
+                break;
+            case EnemyType.MINI_BOSS_TROLL:
+                bodyColor = 0x556B2F; // Dark olive green
+                break;
+            case EnemyType.MINI_BOSS_WRAITH:
+                bodyColor = 0x2F4F4F; // Dark slate gray
                 break;
             case EnemyType.BOSS_OGRE:
                 bodyColor = 0x4B0082; // Indigo (purple)
